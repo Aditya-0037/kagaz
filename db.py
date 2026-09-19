@@ -14,6 +14,14 @@ Collections:
   users/{user_id}        — {email, password_hash, created_at}
   runs/{run_id}           — {user_id, status, scheme_source, created_at,
                               updated_at, ...AuditResult fields once done}
+  documents/{document_id} — {user_id, doc_type, label, filename,
+                              content_type, gcs_uri, uploaded_at,
+                              expiry_date} — the digital locker: one
+                              user's stored documents, independent of any
+                              particular scheme run. expiry_date is
+                              nullable ("YYYY-MM-DD", user-entered at
+                              upload time) and is what powers the
+                              expiring-soon view.
 """
 
 from __future__ import annotations
@@ -121,3 +129,59 @@ def list_runs_for_user(user_id: str) -> list[dict[str, Any]]:
         data["id"] = doc.id
         result.append(data)
     return result
+
+
+# ------------------------------------------------------- locker documents --
+
+def create_document(
+    user_id: str,
+    doc_type: str,
+    label: str,
+    filename: str,
+    content_type: str,
+    gcs_uri: str,
+    expiry_date: str | None,
+) -> str:
+    document_id = uuid.uuid4().hex
+    _client().collection("documents").document(document_id).set(
+        {
+            "user_id": user_id,
+            "doc_type": doc_type,
+            "label": label,
+            "filename": filename,
+            "content_type": content_type,
+            "gcs_uri": gcs_uri,
+            "expiry_date": expiry_date,
+            "uploaded_at": _now(),
+        }
+    )
+    return document_id
+
+
+def get_document(document_id: str) -> dict[str, Any] | None:
+    doc = _client().collection("documents").document(document_id).get()
+    if not doc.exists:
+        return None
+    data = doc.to_dict()
+    data["id"] = doc.id
+    return data
+
+
+def list_documents_for_user(user_id: str) -> list[dict[str, Any]]:
+    docs = (
+        _client()
+        .collection("documents")
+        .where(filter=firestore.FieldFilter("user_id", "==", user_id))
+        .order_by("uploaded_at", direction=firestore.Query.DESCENDING)
+        .stream()
+    )
+    result = []
+    for doc in docs:
+        data = doc.to_dict()
+        data["id"] = doc.id
+        result.append(data)
+    return result
+
+
+def delete_document(document_id: str) -> None:
+    _client().collection("documents").document(document_id).delete()

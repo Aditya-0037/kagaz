@@ -49,6 +49,15 @@ app.include_router(app_router)
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request) -> HTMLResponse:
+    """The product landing page. The synthetic demo it used to be now
+    lives at /demo — a visitor shouldn't land on a student/scheme dropdown
+    and have to guess that the locker, URL input, and screenshot input
+    exist behind a login."""
+    return templates.TemplateResponse(request, "landing.html", {})
+
+
+@app.get("/demo", response_class=HTMLResponse)
+def demo(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(
         request,
         "index.html",

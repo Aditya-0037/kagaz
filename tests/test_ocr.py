@@ -94,3 +94,22 @@ def test_vision_backend_replay_mode_raises_cache_miss_without_network(monkeypatc
     monkeypatch.setenv("KAGAZ_MODEL_PROVIDER", "vertex")
     with pytest.raises(LLMCacheMiss):
         extract_text(UNRECORDED_IMAGE, backend="vision", cache_dir=tmp_path)
+
+
+SCHEME_PDF = Path(__file__).parent.parent / "fixtures" / "schemes" / "scheme_a_postmatric.pdf"
+
+
+def test_pdf_documents_are_read_by_text_layer_not_an_image_backend(tmp_path):
+    # Real users upload certificates as PDFs. Handing those bytes to an
+    # image decoder raises "cannot identify image file"; extract_text must
+    # route by file type instead, with no model call at all.
+    text = extract_text(SCHEME_PDF, cache_dir=tmp_path)
+    assert "Post-Matric" in text
+    assert (tmp_path / "pdf").is_dir()
+
+
+def test_pdf_routing_ignores_the_configured_image_backend(tmp_path, monkeypatch):
+    monkeypatch.setenv("KAGAZ_OCR_BACKEND", "vision")
+    # Would be a cache miss / network call if it actually used "vision".
+    text = extract_text(SCHEME_PDF, cache_dir=tmp_path)
+    assert text.strip()

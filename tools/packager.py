@@ -28,6 +28,36 @@ from tools.formatting import convert_image_format, format_document_pdf, format_p
 _IMAGE_DOC_TYPES = {"photo", "signature"}
 _DEFAULT_MAX_SIZE_KB = 200  # used when a scheme's spec didn't state one
 
+# Phase F: common reasons a scheme application gets rejected that a
+# document-verification pipeline structurally cannot see, because they
+# aren't facts on the document at all — they're facts about a portal, a
+# bank account's linkage status, or a submission-time event. Listing them
+# explicitly, and labeling them "check yourself," is the honest complement
+# to Kagaz's document findings above: not a gap to apologize for, but a
+# stated boundary of what documents alone can confirm. Static content, not
+# an AI judgment call — nothing here is inferred from a specific student's
+# documents.
+NON_DOCUMENT_REJECTION_CAUSES: list[str] = [
+    "NPCI/Aadhaar seeding status of the bank account — a passbook can look "
+    "perfectly valid and still fail DBT credit if the account isn't NPCI-mapped "
+    "to that Aadhaar. Check this on the NPCI mapper or with the bank directly.",
+    "Bank account holder name not matching the applicant's name exactly as "
+    "the bank's own records have it (not just as printed on the passbook).",
+    "Portal downtime or a missed deadline due to last-minute submission — "
+    "Kagaz checks a document's validity against the scheme deadline, not "
+    "whether the portal itself was reachable when you tried to submit.",
+    "Category/income-certificate validity per the *portal's* rules, which "
+    "can be stricter than the certificate's own printed validity window "
+    "(e.g. some portals only accept certificates issued in the current "
+    "financial year regardless of printed expiry).",
+    "Duplicate or prior-year application already on file for this student "
+    "under this scheme — not something any single document reveals.",
+    "Institution/course eligibility for this specific scheme — Kagaz "
+    "verifies the documents you gave it against the scheme's stated "
+    "document/format requirements, not whether your institution or course "
+    "is itself eligible for the scheme.",
+]
+
 _styles = getSampleStyleSheet()
 _H1 = ParagraphStyle("PkgH1", parent=_styles["Heading1"], fontSize=16, spaceAfter=10)
 _H2 = ParagraphStyle("PkgH2", parent=_styles["Heading2"], fontSize=13, spaceAfter=8, spaceBefore=10)
@@ -123,12 +153,21 @@ def _write_values_csv(requirement: Requirement, documents: list[ExtractedDocumen
 # --------------------------------------------------------------------------
 
 
-def _write_checklist_md(requirement: Requirement, documents: list[ExtractedDocument], dest_path: Path) -> None:
+def _write_checklist_md(
+    requirement: Requirement, documents: list[ExtractedDocument], dest_path: Path, synthetic: bool = True
+) -> None:
     found_types = {d.doc_type for d in documents}
+    banner = (
+        "SYNTHETIC DEMO DATA — no real students, no real documents."
+        if synthetic
+        else "YOUR DOCUMENTS — processed live, not synthetic data."
+    )
     lines = [
         f"# Checklist — {requirement.scheme_name}",
         "",
-        "SYNTHETIC DEMO DATA — no real students, no real documents.",
+        banner,
+        "",
+        "## Verified from your documents",
         "",
         "| Document | Required | Found |",
         "| --- | --- | --- |",
@@ -141,6 +180,17 @@ def _write_checklist_md(requirement: Requirement, documents: list[ExtractedDocum
     lines.append("")
     lines.append("Missing: none." if not missing else f"Missing: {', '.join(missing)}.")
 
+    lines += [
+        "",
+        "## Kagaz cannot verify this — check it yourself",
+        "",
+        "These are common reasons applications get rejected that no document",
+        "pipeline can see — they're facts about a portal or a bank account's",
+        "linkage, not something printed on any document:",
+        "",
+    ]
+    lines += [f"- {cause}" for cause in NON_DOCUMENT_REJECTION_CAUSES]
+
     dest_path.write_text("\n".join(lines), encoding="utf-8")
 
 
@@ -152,11 +202,16 @@ _SEVERITY_ORDER = ["blocker", "worth_knowing", "likely_fine"]
 _SEVERITY_LABELS = {"blocker": "Blockers", "worth_knowing": "Worth Knowing", "likely_fine": "Likely Fine"}
 
 
-def _write_audit_report_pdf(result: AuditResult, dest_path: Path) -> None:
+def _write_audit_report_pdf(result: AuditResult, dest_path: Path, synthetic: bool = True) -> None:
+    banner = (
+        "SYNTHETIC DEMO DATA — no real students, no real documents."
+        if synthetic
+        else "YOUR DOCUMENTS — processed live, not synthetic data."
+    )
     story = [
         Paragraph(f"Kagaz Audit Report — {result.student_id}", _H1),
         Paragraph(f"Scheme: {result.requirement.scheme_name}", _BODY),
-        Paragraph("SYNTHETIC DEMO DATA — no real students, no real documents.", _BODY),
+        Paragraph(banner, _BODY),
         Spacer(1, 4),
         Paragraph(
             "<b>This run is advisory only.</b> Kagaz never submits anything to any "
@@ -167,6 +222,7 @@ def _write_audit_report_pdf(result: AuditResult, dest_path: Path) -> None:
         Spacer(1, 10),
     ]
 
+    story.append(Paragraph("Verified from your documents", _H2))
     if not result.findings:
         story.append(Paragraph("No findings. Every document checked out.", _BODY))
     for severity in _SEVERITY_ORDER:
@@ -178,6 +234,18 @@ def _write_audit_report_pdf(result: AuditResult, dest_path: Path) -> None:
             story.append(Paragraph(f"<b>{finding.category}</b>: {finding.message}", _BODY))
             for ev in finding.evidence:
                 story.append(Paragraph(f"&bull; {ev}", _EVIDENCE))
+
+    story.append(Spacer(1, 10))
+    story.append(Paragraph("Kagaz cannot verify this — check it yourself", _H2))
+    story.append(
+        Paragraph(
+            "Common rejection reasons no document pipeline can see — facts about a "
+            "portal or a bank account's linkage, not anything printed on a document:",
+            _BODY,
+        )
+    )
+    for cause in NON_DOCUMENT_REJECTION_CAUSES:
+        story.append(Paragraph(f"&bull; {cause}", _EVIDENCE))
 
     if result.decision_log:
         story.append(Paragraph("Decision Log", _H2))
@@ -208,15 +276,17 @@ def _write_audit_report_pdf(result: AuditResult, dest_path: Path) -> None:
 # --------------------------------------------------------------------------
 
 
-def package_audit(result: AuditResult, output_root: Path) -> Path:
+def package_audit(result: AuditResult, output_root: Path, synthetic: bool = True) -> Path:
     """Build the full deliverable folder for one AuditResult and return
-    its path."""
+    its path. synthetic=False (the real-account flow) swaps the "SYNTHETIC
+    DEMO DATA" banner for a "YOUR DOCUMENTS" one in checklist.md and
+    audit_report.pdf — everything else about the folder is identical."""
     dest_dir = Path(output_root) / f"{result.student_id}_{result.scheme_id}"
     dest_dir.mkdir(parents=True, exist_ok=True)
 
     _package_documents(result.extracted_documents, result.requirement.required_documents, dest_dir / "documents")
     _write_values_csv(result.requirement, result.extracted_documents, dest_dir / "values.csv")
-    _write_checklist_md(result.requirement, result.extracted_documents, dest_dir / "checklist.md")
-    _write_audit_report_pdf(result, dest_dir / "audit_report.pdf")
+    _write_checklist_md(result.requirement, result.extracted_documents, dest_dir / "checklist.md", synthetic=synthetic)
+    _write_audit_report_pdf(result, dest_dir / "audit_report.pdf", synthetic=synthetic)
 
     return dest_dir

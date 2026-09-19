@@ -63,7 +63,20 @@ def _get_rapidocr_engine():
     return _rapidocr_engine
 
 
-def _run_rapidocr(path: Path) -> str:
+def _run_pdf(path: Path, llm_mode: str | None = None) -> str:
+    """A PDF document, not an image. Real users upload certificates as
+    PDFs constantly — handing those bytes to an image decoder just raises
+    "cannot identify image file". pdfplumber is already a dependency (the
+    requirement extractor reads scheme PDFs with it) and needs no model
+    call at all for a text-layer PDF."""
+    import pdfplumber
+
+    with pdfplumber.open(path) as pdf:
+        pages = [page.extract_text() or "" for page in pdf.pages]
+    return "\n\n".join(pages).strip()
+
+
+def _run_rapidocr(path: Path, llm_mode: str | None = None) -> str:
     engine = _get_rapidocr_engine()
     result, _elapse = engine(str(path))
     if not result:
@@ -71,7 +84,7 @@ def _run_rapidocr(path: Path) -> str:
     return "\n".join(line[1] for line in result)
 
 
-def _run_tesseract(path: Path) -> str:
+def _run_tesseract(path: Path, llm_mode: str | None = None) -> str:
     import pytesseract
     from PIL import Image
 
@@ -82,7 +95,7 @@ def _run_tesseract(path: Path) -> str:
 _IMAGE_FORMAT_ALIASES = {"jpg": "jpeg"}
 
 
-def _run_vision(path: Path) -> str:
+def _run_vision(path: Path, llm_mode: str | None = None) -> str:
     from strands import Agent
 
     from llm_cache import cached_call
@@ -110,14 +123,15 @@ def _run_vision(path: Path) -> str:
         return {"text": str(result)}
 
     inputs = {"image_sha256": hashlib.sha256(image_bytes).hexdigest()}
-    response = cached_call(provider, model_name, _VISION_PROMPT, inputs, call_fn)
+    response = cached_call(provider, model_name, _VISION_PROMPT, inputs, call_fn, mode=llm_mode)
     return response["text"]
 
 
-_BACKENDS: dict[str, Callable[[Path], str]] = {
+_BACKENDS: dict[str, Callable[..., str]] = {
     "rapidocr": _run_rapidocr,
     "tesseract": _run_tesseract,
     "vision": _run_vision,
+    "pdf": _run_pdf,
 }
 
 
@@ -144,10 +158,19 @@ def extract_text(
     backend: str | None = None,
     *,
     cache_dir: Path = DEFAULT_CACHE_DIR,
+    llm_mode: str | None = None,
 ) -> str:
-    """Extract text from one document image, cached per (backend, file hash)."""
+    """Extract text from one document image, cached per (backend, file
+    hash) under cache_dir. The real-account flow passes a non-committed
+    scratch cache_dir and llm_mode="live" explicitly — never the default
+    fixtures/ocr_cache/, and never silently replayed/cached."""
     path = Path(image_path)
-    backend = backend or os.environ.get("KAGAZ_OCR_BACKEND") or _default_backend()
+    # A PDF is routed by file type, not by KAGAZ_OCR_BACKEND: no image
+    # backend can decode one, and its text layer needs no OCR at all.
+    if path.suffix.lower() == ".pdf":
+        backend = "pdf"
+    else:
+        backend = backend or os.environ.get("KAGAZ_OCR_BACKEND") or _default_backend()
     if backend not in _BACKENDS:
         raise ValueError(f"Unknown KAGAZ_OCR_BACKEND: {backend!r}")
 
@@ -156,7 +179,7 @@ def extract_text(
     if cache_path.exists():
         return json.loads(cache_path.read_text(encoding="utf-8"))["text"]
 
-    text = _BACKENDS[backend](path)
+    text = _BACKENDS[backend](path, llm_mode=llm_mode)
 
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     cache_path.write_text(

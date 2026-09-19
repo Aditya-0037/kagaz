@@ -63,6 +63,7 @@ def run_verifier(
     source_path: Path,
     *,
     cache_inputs: dict,
+    llm_mode: str | None = None,
 ) -> tuple[ExtractedDocument, dict]:
     """Run one verifier call and return (ExtractedDocument, token_usage).
 
@@ -90,7 +91,7 @@ def run_verifier(
                 last_error = exc
         raise last_error
 
-    response = cached_call(provider, model_name, prompt, cache_inputs, call_fn)
+    response = cached_call(provider, model_name, prompt, cache_inputs, call_fn, mode=llm_mode)
     output = VerifierOutput.model_validate(response["output"])
     usage = response.get("usage", {})
 

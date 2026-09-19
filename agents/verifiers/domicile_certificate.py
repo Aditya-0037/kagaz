@@ -27,7 +27,9 @@ OCR TEXT:
 """
 
 
-def verify(ocr_text: str, source_path: Path, *, student_id: str) -> tuple[ExtractedDocument, dict]:
+def verify(
+    ocr_text: str, source_path: Path, *, student_id: str, llm_mode: str | None = None
+) -> tuple[ExtractedDocument, dict]:
     prompt = _PROMPT_TEMPLATE.format(ocr_text=ocr_text)
     return run_verifier(
         "domicile_certificate",
@@ -35,4 +37,5 @@ def verify(ocr_text: str, source_path: Path, *, student_id: str) -> tuple[Extrac
         EXPECTED_FIELDS,
         source_path,
         cache_inputs={"doc_type": "domicile_certificate", "student": student_id},
+        llm_mode=llm_mode,
     )

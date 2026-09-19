@@ -46,6 +46,14 @@ itsdangerous==2.2.0
 google-cloud-firestore==2.31.0
 google-cloud-storage==3.14.1
 
+# Real-account scheme input (agents/scheme_input.py): a pasted URL's HTML
+# is stripped of markup with BeautifulSoup4 before it reaches the same
+# requirement extractor every other input tier uses. Was already an
+# installed transitive dependency (strands-agents-tools); pinned directly
+# now that this repo imports it itself. URL fetching is stdlib
+# (urllib.request) with an SSRF guard, no new HTTP client dependency.
+beautifulsoup4==4.15.0
+
 # Dev / test
 pytest==8.4.2
 httpx==0.28.1

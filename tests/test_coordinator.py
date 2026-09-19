@@ -143,3 +143,76 @@ def test_photo_and_signature_do_not_produce_findings_from_format_issues():
     photo_doc = next(d for d in result.extracted_documents if d.doc_type == "photo")
     assert photo_doc.extraction_confidence < 1.0  # the check does notice
     assert result.findings == []  # but it's not escalated as a Finding
+
+
+def test_one_unreadable_document_becomes_a_finding_not_a_crashed_run(tmp_path):
+    # A corrupt scan / wrong file type for one document must not take the
+    # whole audit down: it becomes a blocker finding against that document
+    # and everything else still gets checked.
+    from agents.coordinator import run_audit_for_documents
+    from contracts import Requirement, RequiredDoc
+
+    junk = tmp_path / "not_really_an_image.jpg"
+    junk.write_bytes(b"this is not an image at all")
+
+    requirement = Requirement(
+        scheme_id="unreadable_test",
+        scheme_name="Unreadable Test",
+        required_documents=[RequiredDoc(doc_type="income_certificate")],
+        required_fields=[],
+        source="text",
+        confidence=1.0,
+    )
+
+    result = run_audit_for_documents("someone", "unreadable_test", requirement, {"income_certificate": junk})
+
+    assert [f.category for f in result.findings] == ["format"]
+    assert "could not read" in result.findings[0].message.lower()
+    assert result.findings[0].severity == "blocker"
+
+
+def test_real_runs_never_write_ocr_text_into_the_committed_fixtures_dir(tmp_path, monkeypatch):
+    # Regression: a real user's document OCR text once landed in
+    # fixtures/ocr_cache/, which is git-tracked and pushed publicly. Real
+    # runs must cache OCR somewhere gitignored instead.
+    import agents.coordinator as coordinator
+    from tools.ocr import DEFAULT_CACHE_DIR
+
+    seen: dict[str, object] = {}
+
+    def fake_extract_text(path, backend=None, *, cache_dir=None, llm_mode=None):
+        seen["cache_dir"] = cache_dir
+        seen["llm_mode"] = llm_mode
+        return "OCR TEXT"
+
+    def fake_verify(ocr_text, source_path, *, student_id, llm_mode=None):
+        from contracts import ExtractedDocument
+
+        return ExtractedDocument(
+            doc_type="income_certificate", source_path=source_path, extraction_confidence=1.0
+        ), {}
+
+    monkeypatch.setattr(coordinator, "extract_text", fake_extract_text)
+    monkeypatch.setitem(coordinator.VERIFIERS, "income_certificate", fake_verify)
+
+    from contracts import Requirement, RequiredDoc
+
+    doc = tmp_path / "income_certificate.jpg"
+    doc.write_bytes(b"x")
+    requirement = Requirement(
+        scheme_id="s",
+        scheme_name="S",
+        required_documents=[RequiredDoc(doc_type="income_certificate")],
+        required_fields=[],
+        source="text",
+        confidence=1.0,
+    )
+
+    coordinator.run_real_audit_with_escalation(
+        "user1", "run1", requirement, {"income_certificate": doc}, lambda finding: ("accept", None)
+    )
+
+    assert seen["llm_mode"] == "live"
+    assert seen["cache_dir"] == coordinator.REAL_OCR_CACHE_DIR
+    assert DEFAULT_CACHE_DIR not in (seen["cache_dir"], seen["cache_dir"].parent)
+    assert "fixtures" not in str(seen["cache_dir"])
