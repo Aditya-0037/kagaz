@@ -19,6 +19,7 @@ from datetime import date
 
 from contracts import ExtractedDocument, Finding, RequiredDoc
 from tools.dates import check_validity, compare_dob
+from tools.money import format_inr, parse_inr
 from tools.name_match import compare_names
 
 _REFERENCE_DOC_PRIORITY = ("marksheet",)
@@ -116,6 +117,67 @@ def _validity_findings(
             )
         )
     return findings
+
+
+def income_findings(documents: list[ExtractedDocument], max_family_income_inr: int | None) -> list[Finding]:
+    """Compare the family income on the income certificate against the
+    scheme's stated ceiling. Deterministic arithmetic, no LLM — a scheme
+    rejects an otherwise-perfect application when the income on the
+    certificate is over the limit, and that is checkable.
+
+    Three outcomes, all honest:
+      - over the limit            -> blocker, needs a human
+      - within the limit          -> no finding (nothing is wrong)
+      - income unreadable/absent  -> worth_knowing, so it is never
+                                     silently treated as "passed"
+    """
+    if max_family_income_inr is None:
+        return []
+
+    limit_text = format_inr(max_family_income_inr)
+    stated = next(
+        (doc.fields["annual_income"] for doc in documents if doc.fields.get("annual_income")),
+        None,
+    )
+    if stated is None:
+        return [
+            Finding(
+                severity="worth_knowing",
+                category="eligibility",
+                message=f"This scheme caps family income at {limit_text} per year, and Kagaz could not read an income figure from your documents.",
+                evidence=["No annual income value was extracted from the income certificate."],
+                suggested_action="Check your income certificate's figure against the scheme's limit yourself.",
+            )
+        ]
+
+    amount = parse_inr(stated)
+    if amount is None:
+        return [
+            Finding(
+                severity="worth_knowing",
+                category="eligibility",
+                message=f"This scheme caps family income at {limit_text} per year; the figure on your certificate ({stated}) could not be read as an amount.",
+                evidence=[f"Income certificate states: {stated}"],
+                suggested_action="Compare the figure on your certificate against the scheme's limit yourself.",
+            )
+        ]
+
+    if amount > max_family_income_inr:
+        return [
+            Finding(
+                severity="blocker",
+                category="eligibility",
+                message=f"Family income {format_inr(amount)} is above this scheme's limit of {limit_text} per year.",
+                evidence=[
+                    f"Income certificate states: {stated} ({format_inr(amount)})",
+                    f"Scheme's stated ceiling: {limit_text} per year",
+                ],
+                suggested_action="Applications over the income ceiling are normally rejected. Check whether a different income certificate applies, or whether this scheme has a higher-income category.",
+                needs_human=True,
+            )
+        ]
+
+    return []
 
 
 def audit_student(

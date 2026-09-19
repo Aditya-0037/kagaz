@@ -34,6 +34,7 @@ from contracts import Requirement, RequiredDoc
 from llm_cache import cached_call
 from model_provider import get_model, get_model_identifier
 from tools.doc_types import normalize_doc_type
+from tools.money import parse_inr
 
 # Below this many characters, treat the input as unreadable (a blank/failed
 # scan, a near-empty paste) and skip the LLM entirely rather than ask a
@@ -82,6 +83,23 @@ class _FormatSpecsOutput(BaseModel):
 
 class _DeadlineOutput(BaseModel):
     deadline_iso: str | None = Field(default=None, description="Application deadline as YYYY-MM-DD. Null if no fixed deadline is stated.")
+
+
+class _EligibilityOutput(BaseModel):
+    max_family_income: str | None = Field(
+        default=None,
+        description=(
+            "The maximum family/parental annual income allowed, copied as the text writes it "
+            "(e.g. 'Rs. 2,50,000 per annum', '2.5 lakh'). Null if the text states no income ceiling."
+        ),
+    )
+    criteria: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Every other stated eligibility rule, one short plain-language sentence each "
+            "(course/class, category, state of domicile, minimum marks, age). Empty if none stated."
+        ),
+    )
 
 
 # --------------------------------------------------------------------------
@@ -140,6 +158,26 @@ def _deadline_prompt(text: str) -> str:
     )
 
 
+def _eligibility_prompt(text: str) -> str:
+    return (
+        "You are extracting WHO IS ELIGIBLE from the application form or notification "
+        "below — not what documents are needed. It may be any kind of form: a "
+        "scholarship, a subsidy or welfare scheme, an admission form, a job or exam "
+        "application. Read the ENTIRE text and take every rule from THIS text only.\n\n"
+        "1. max_family_income: if this form states a maximum family/parental/household/"
+        "applicant annual income to qualify, copy that amount exactly as written (keep "
+        "the currency symbol, commas, and any 'lakh'/'per annum' wording). If this form "
+        "states no income ceiling, return null — never carry over a figure from another "
+        "scheme and never invent one.\n"
+        "2. criteria: every OTHER stated eligibility rule, as short plain sentences — "
+        "whatever this particular form actually requires (course or class of study, "
+        "caste/category, state of domicile, minimum marks, age limits, employment "
+        "status, land holding, residence). Do not include document requirements or file "
+        "format rules here. Empty list if the text states none.\n\n"
+        f"FORM / NOTIFICATION TEXT:\n{text}"
+    )
+
+
 # --------------------------------------------------------------------------
 # Model call plumbing
 # --------------------------------------------------------------------------
@@ -151,6 +189,7 @@ def _run_structured(
     *,
     scheme_id: str,
     call_name: str,
+    llm_mode: str | None = None,
 ) -> _OutputModelT:
     provider = os.environ.get("KAGAZ_MODEL_PROVIDER", "vertex")
     model_name = get_model_identifier(provider)
@@ -161,7 +200,7 @@ def _run_structured(
         return result.structured_output.model_dump(mode="json")
 
     inputs = {"scheme_id": scheme_id, "call": call_name}
-    response = cached_call(provider, model_name, prompt, inputs, call_fn)
+    response = cached_call(provider, model_name, prompt, inputs, call_fn, mode=llm_mode)
     return output_model.model_validate(response)
 
 
@@ -185,6 +224,7 @@ def _merge(
     fields_out: _FieldsOutput,
     format_specs_out: _FormatSpecsOutput,
     deadline_out: _DeadlineOutput,
+    eligibility_out: _EligibilityOutput | None = None,
 ) -> Requirement:
     unresolved: list[str] = []
 
@@ -248,6 +288,13 @@ def _merge(
     )
     confidence = round(resolved_checks / total_checks, 2) if total_checks else 0.0
 
+    max_income = parse_inr(eligibility_out.max_family_income) if eligibility_out else None
+    if eligibility_out and eligibility_out.max_family_income and max_income is None:
+        unresolved.append(
+            f"Family income limit stated as {eligibility_out.max_family_income!r}, which could not be "
+            "read as a rupee amount — check it against your income certificate yourself."
+        )
+
     return Requirement(
         scheme_id=scheme_id,
         scheme_name=scheme_name,
@@ -257,6 +304,8 @@ def _merge(
         source=source,
         confidence=confidence,
         unresolved=unresolved,
+        max_family_income_inr=max_income,
+        eligibility_criteria=list(eligibility_out.criteria) if eligibility_out else [],
     )
 
 
@@ -265,13 +314,21 @@ def _merge(
 # --------------------------------------------------------------------------
 
 
-def _extract_pdf_text(pdf_path: Path) -> str:
-    with pdfplumber.open(pdf_path) as pdf:
+def extract_pdf_text(pdf_path: Path | str) -> str:
+    """Public: raw text out of a PDF, no LLM. Reused by
+    agents/scheme_input.py for a scheme PDF fetched from a URL or uploaded
+    directly, so both paths share exactly one PDF-reading implementation."""
+    with pdfplumber.open(Path(pdf_path)) as pdf:
         pages_text = [page.extract_text() or "" for page in pdf.pages]
     return "\n\n".join(pages_text).strip()
 
 
-def _extract_requirement_from_text(text: str, scheme_id: str, scheme_name: str, source: str) -> Requirement:
+_extract_pdf_text = extract_pdf_text
+
+
+def _extract_requirement_from_text(
+    text: str, scheme_id: str, scheme_name: str, source: str, llm_mode: str | None = None
+) -> Requirement:
     text = text.strip()
     if len(text) < MIN_TEXT_LENGTH:
         return Requirement(
@@ -285,21 +342,44 @@ def _extract_requirement_from_text(text: str, scheme_id: str, scheme_name: str, 
             unresolved=["Could not extract readable text from the input; it appears empty, blank, or unreadable."],
         )
 
-    checklist = _run_structured(_checklist_prompt(text), _ChecklistOutput, scheme_id=scheme_id, call_name="checklist")
-    fields_out = _run_structured(_fields_prompt(text), _FieldsOutput, scheme_id=scheme_id, call_name="fields")
-    format_specs_out = _run_structured(_format_specs_prompt(text), _FormatSpecsOutput, scheme_id=scheme_id, call_name="format_specs")
-    deadline_out = _run_structured(_deadline_prompt(text), _DeadlineOutput, scheme_id=scheme_id, call_name="deadline")
+    checklist = _run_structured(
+        _checklist_prompt(text), _ChecklistOutput, scheme_id=scheme_id, call_name="checklist", llm_mode=llm_mode
+    )
+    fields_out = _run_structured(
+        _fields_prompt(text), _FieldsOutput, scheme_id=scheme_id, call_name="fields", llm_mode=llm_mode
+    )
+    format_specs_out = _run_structured(
+        _format_specs_prompt(text), _FormatSpecsOutput, scheme_id=scheme_id, call_name="format_specs", llm_mode=llm_mode
+    )
+    deadline_out = _run_structured(
+        _deadline_prompt(text), _DeadlineOutput, scheme_id=scheme_id, call_name="deadline", llm_mode=llm_mode
+    )
+    eligibility_out = _run_structured(
+        _eligibility_prompt(text), _EligibilityOutput, scheme_id=scheme_id, call_name="eligibility", llm_mode=llm_mode
+    )
 
-    return _merge(scheme_id, scheme_name, source, checklist, fields_out, format_specs_out, deadline_out)
+    return _merge(
+        scheme_id, scheme_name, source, checklist, fields_out, format_specs_out, deadline_out, eligibility_out
+    )
 
 
-def extract_requirement_from_pdf(pdf_path: Path | str, scheme_id: str, scheme_name: str) -> Requirement:
+def extract_requirement_from_pdf(
+    pdf_path: Path | str, scheme_id: str, scheme_name: str, llm_mode: str | None = None
+) -> Requirement:
     text = _extract_pdf_text(Path(pdf_path))
-    return _extract_requirement_from_text(text, scheme_id, scheme_name, source="pdf")
+    return _extract_requirement_from_text(text, scheme_id, scheme_name, source="pdf", llm_mode=llm_mode)
 
 
-def extract_requirement_from_text(text: str, scheme_id: str, scheme_name: str) -> Requirement:
-    return _extract_requirement_from_text(text, scheme_id, scheme_name, source="text")
+def extract_requirement_from_text(
+    text: str, scheme_id: str, scheme_name: str, source: str = "text", llm_mode: str | None = None
+) -> Requirement:
+    """Public entry point for the real-account flow's non-PDF scheme-input
+    tiers (agents/scheme_input.py) — pasted text, a URL's fetched text/HTML,
+    or OCR'd screenshot text all land here, tagged with the source they
+    actually came from. llm_mode is forced to "live" by the real-account
+    flow regardless of the server-wide KAGAZ_LLM_MODE, so real scheme text
+    is never written into the committed replay cache."""
+    return _extract_requirement_from_text(text, scheme_id, scheme_name, source=source, llm_mode=llm_mode)
 
 
 def build_manual_requirement(

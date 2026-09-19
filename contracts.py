@@ -34,13 +34,22 @@ class Requirement(BaseModel):
     deadline: date | None = None
     required_documents: list[RequiredDoc] = Field(default_factory=list)
     required_fields: list[str] = Field(default_factory=list)
-    # "text" added for the pasted-text extraction path (spec section 6.1's
-    # PDF -> pasted text -> manual priority never included a URL-fetch path
-    # — "no URL fetching, no scraping" — so "url" stays reserved/unused
-    # while "text" covers the real second tier).
-    source: Literal["pdf", "url", "manual", "text"]
+    # "text"/"url"/"screenshot" are the real-account flow's scheme-input
+    # tiers (agents/scheme_input.py) — a pasted URL is fetched with SSRF
+    # guards (a single GET, never a login/crawl) and its text or PDF bytes
+    # feed the same extractor as every other source.
+    source: Literal["pdf", "url", "manual", "text", "screenshot"]
     confidence: float
     unresolved: list[str] = Field(default_factory=list)
+    # Eligibility, as distinct from paperwork: a scheme can reject an
+    # application whose documents are all perfect because the family
+    # income on them is over the scheme's ceiling. Rupees per year;
+    # None means the scheme text stated no income limit.
+    max_family_income_inr: int | None = None
+    # Other stated eligibility rules, in the scheme's own words. Kagaz
+    # reports these for the applicant to check — it does not try to
+    # verify them from documents.
+    eligibility_criteria: list[str] = Field(default_factory=list)
 
 
 class ExtractedDocument(BaseModel):
@@ -61,7 +70,7 @@ class Finding(BaseModel):
 
     severity: Literal["blocker", "likely_fine", "worth_knowing"]
     category: Literal[
-        "missing", "expired", "format", "name_mismatch", "dob_mismatch", "field_gap"
+        "missing", "expired", "format", "name_mismatch", "dob_mismatch", "field_gap", "eligibility"
     ]
     message: str
     evidence: list[str] = Field(default_factory=list)
