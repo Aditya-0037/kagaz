@@ -1,0 +1,74 @@
+{
+  "student_id": "mohammed_irfan",
+  "scenario": "real blockers \u2014 expiring income certificate + DOB day/month collision",
+  "canonical_name": "Mohammed Irfan Sheikh",
+  "documents": {
+    "income_certificate": {
+      "fields": {
+        "name": "Mohammed Irfan Sheikh",
+        "father_name": "Abdul Sheikh",
+        "dob": "05/06/2007"
+      },
+      "issue_date": "2025-09-20",
+      "valid_until": "2026-09-19",
+      "source_path": "fixtures\\students\\mohammed_irfan\\documents\\income_certificate.jpg"
+    },
+    "caste_certificate": {
+      "fields": {
+        "name": "Mohammed Irfan Sheikh",
+        "father_name": "Abdul Sheikh",
+        "dob": "05/06/2007"
+      },
+      "issue_date": "2022-01-05",
+      "valid_until": "2032-01-05",
+      "source_path": "fixtures\\students\\mohammed_irfan\\documents\\caste_certificate.jpg"
+    },
+    "domicile_certificate": {
+      "fields": {
+        "name": "Mohammed Irfan Sheikh",
+        "father_name": "Abdul Sheikh",
+        "dob": "06/05/2007"
+      },
+      "issue_date": "2019-11-11",
+      "valid_until": "2029-11-11",
+      "source_path": "fixtures\\students\\mohammed_irfan\\documents\\domicile_certificate.jpg"
+    },
+    "marksheet": {
+      "fields": {
+        "name": "Mohammed Irfan Sheikh",
+        "father_name": "Abdul Sheikh",
+        "dob": "05/06/2007"
+      },
+      "issue_date": "2026-05-25",
+      "valid_until": null,
+      "source_path": "fixtures\\students\\mohammed_irfan\\documents\\marksheet.jpg"
+    },
+    "bank_passbook": {
+      "fields": {
+        "name": "Mohammed Irfan Sheikh",
+        "father_name": "Abdul Sheikh",
+        "dob": "05/06/2007"
+      },
+      "issue_date": "2021-09-30",
+      "valid_until": null,
+      "source_path": "fixtures\\students\\mohammed_irfan\\documents\\bank_passbook.jpg"
+    },
+    "signature": {
+      "fields": {
+        "name": "Mohammed Irfan Sheikh"
+      },
+      "issue_date": null,
+      "valid_until": null,
+      "source_path": "fixtures\\students\\mohammed_irfan\\documents\\signature.jpg"
+    },
+    "photo": {
+      "fields": {
+        "name": "Mohammed Irfan Sheikh"
+      },
+      "issue_date": null,
+      "valid_until": null,
+      "source_path": "fixtures\\students\\mohammed_irfan\\documents\\photo.jpg",
+      "note": "rendered at 600x800px"
+    }
+  }
+}

@@ -1,0 +1,51 @@
+# Core, needed from Phase 1 onward
+pydantic==2.13.5
+
+# Phase 3: formatter (image/PDF handling)
+Pillow==12.3.0
+pypdf==6.16.2
+img2pdf==0.6.3
+pdfplumber==0.11.10
+
+# Phase 4: synthetic scheme PDF generation
+reportlab==5.0.1
+
+# Phase 5b: deterministic OCR (tools/ocr.py). rapidocr is the default
+# backend, verified working with no system binary needed. pytesseract is
+# the documented fallback path — installed so that code path imports
+# cleanly, though the system tesseract binary itself isn't required unless
+# KAGAZ_OCR_BACKEND=tesseract is actually selected.
+rapidocr-onnxruntime==1.4.4
+pytesseract==0.3.13
+
+# Model provider factory (model_provider.py): "vertex" (Gemini via Vertex
+# AI) is the default/primary provider, "ollama" stays as the offline dev
+# fallback. strands-agents' "gemini" extra pulls in google-genai; boto3 is
+# still present as a core (non-extra) dependency of strands-agents itself
+# — see model_provider.py's docstring — but nothing in this repo imports
+# it. The "bedrock" branch in model_provider.py now raises
+# NotImplementedError; this project moved off AWS.
+strands-agents[gemini,ollama]==1.54.0
+strands-agents-tools==0.8.7
+
+# Phase 8b: web UI. uvicorn/starlette/python-multipart already arrive as
+# strands-agents-tools' mcp transitive deps; fastapi itself is the only
+# new top-level addition.
+fastapi==0.141.1
+Jinja2==3.1.6
+
+# Real-user accounts (auth.py, api/auth_routes.py): itsdangerous signs the
+# Starlette SessionMiddleware cookie. Password hashing itself uses stdlib
+# hashlib.scrypt, no dependency needed for that part.
+itsdangerous==2.2.0
+
+# Real-user persistence (db.py, blob_storage.py): Firestore for user/run
+# records, GCS for uploaded documents and generated packages. Both
+# authenticate via the same Application Default Credentials already used
+# for Vertex AI - same project (kagaz-509105), no separate credentials.
+google-cloud-firestore==2.31.0
+google-cloud-storage==3.14.1
+
+# Dev / test
+pytest==8.4.2
+httpx==0.28.1

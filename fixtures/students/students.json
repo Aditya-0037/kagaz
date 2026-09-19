@@ -1,0 +1,17 @@
+[
+  {
+    "student_id": "priya_nair",
+    "canonical_name": "Priya Ramesh Nair",
+    "scenario": "clean \u2014 valid documents, photo needs reformatting"
+  },
+  {
+    "student_id": "aditya_sharma",
+    "canonical_name": "Aditya Kumar Sharma",
+    "scenario": "name variance across documents \u2014 should read as likely_fine"
+  },
+  {
+    "student_id": "mohammed_irfan",
+    "canonical_name": "Mohammed Irfan Sheikh",
+    "scenario": "real blockers \u2014 expiring income certificate + DOB day/month collision"
+  }
+]

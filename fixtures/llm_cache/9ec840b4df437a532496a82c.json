@@ -1,0 +1,86 @@
+{
+  "inputs": {
+    "call": "format_specs",
+    "scheme_id": "scheme_a_postmatric"
+  },
+  "model": "gemini-2.5-flash",
+  "prompt": "You are extracting file-format specifications for uploaded documents from an Indian government scheme notification. Format specifications are sometimes given in a separate table or annexure elsewhere in the document, not necessarily next to the document list \u2014 search the ENTIRE text below. For every document you find a specification for, record its accepted file formats, maximum file size in KB, and pixel dimensions if given.\n\nIf the text only gives a vague statement for a document (e.g. 'in the prescribed format' with no actual numbers), do NOT invent numbers \u2014 leave file_formats empty and max_size_kb/width_px/height_px null, and instead put a short quote or paraphrase of what the text actually says into unresolved_note.\n\nSCHEME NOTIFICATION TEXT:\nPost-Matric Scholarship for Minority Communities \u2014 2026-27\nThe Directorate of Minority Welfare invites online applications from students belonging to notified\nminority communities who are pursuing post-matriculation courses at a recognised institution\nduring the academic year 2026-27. T\nN\nEligibility and Documents Required\nE\nApplicants must submit an Income Certificate issued by the competent revenue authority, a M\nCaste Certificate, and a Domicile Certificate establishing residence in the state. In addition,\nU\napplicants must upload their most recent Marksheet and a copy of their Bank Passbook\nC\nreflecting the account into which the scholarship amount will be disbursed. A recent Photograph\nO\nand a Specimen Signature must also be uploaded as part of the online application.\nD\nThe last date for submission of online applications is 30th September 2026. Applications\nreceived after this date will not be considered under any circumstancLes, regardless of the reason\nfor delay. A\nE\nR\nA\nT\nO\nN\n\u2014\nC\nI\nT\nE\nH\nT\nN\nY\nS\n\nParticulars Required on the Application Form\nThe online application form requires applicants to furnish the following particulars: Full Name (as\nper Aadhaar), Father's/Guardian's Name, Date of Birth, Aadhaar Number, Bank Account\nNumber, IFSC Code, Annual Family Income, and Course/Institution Details.\nT\nIncomplete applications, or applications in which the particulars above do not match the N\nuploaded supporting documents, are liable to be rejected without further notice. Applicants are\nE\nstrongly advised to verify every field before final submission.\nM\nU\nC\nO\nD\nL\nA\nE\nR\nA\nT\nO\nN\n\u2014\nC\nI\nT\nE\nH\nT\nN\nY\nS\n\nAnnexure-I: Format Specifications for Uploaded Documents\nAll documents must be uploaded strictly in the formats and size limits given below. Uploads\noutside these limits will be rejected automatically by the portal.\nT\nDocument Accepted Format Max File Size Dimensions\nN\nPhotograph JPG, JPEG 50 KB 276 x 354 px (3.5cm x 4.5cm @ 200 DPI)\nE\nSpecimen Signature JPG, JPEG 20 KB 276 x 118 px (3.5cm x 1.5cm @ 200 DPI)\nM\nIncome Certificate PDF 200 KB -\nU\nCaste Certificate PDF 200 KB -\nC\nDomicile Certificate PDF 200 KB -\nO\nMarksheet PDF 200 KB -\nBank Passbook (first page) PDF, JPG 150 KB - D\nL\nA\nE\nR\nA\nT\nO\nN\n\u2014\nC\nI\nT\nE\nH\nT\nN\nY\nS",
+  "provider": "vertex",
+  "response": {
+    "specs": [
+      {
+        "doc_type_label": "Photograph",
+        "file_formats": [
+          "JPG",
+          "JPEG"
+        ],
+        "height_px": 354,
+        "max_size_kb": 50,
+        "unresolved_note": null,
+        "width_px": 276
+      },
+      {
+        "doc_type_label": "Specimen Signature",
+        "file_formats": [
+          "JPG",
+          "JPEG"
+        ],
+        "height_px": 118,
+        "max_size_kb": 20,
+        "unresolved_note": null,
+        "width_px": 276
+      },
+      {
+        "doc_type_label": "Income Certificate",
+        "file_formats": [
+          "PDF"
+        ],
+        "height_px": null,
+        "max_size_kb": 200,
+        "unresolved_note": null,
+        "width_px": null
+      },
+      {
+        "doc_type_label": "Caste Certificate",
+        "file_formats": [
+          "PDF"
+        ],
+        "height_px": null,
+        "max_size_kb": 200,
+        "unresolved_note": null,
+        "width_px": null
+      },
+      {
+        "doc_type_label": "Domicile Certificate",
+        "file_formats": [
+          "PDF"
+        ],
+        "height_px": null,
+        "max_size_kb": 200,
+        "unresolved_note": null,
+        "width_px": null
+      },
+      {
+        "doc_type_label": "Marksheet",
+        "file_formats": [
+          "PDF"
+        ],
+        "height_px": null,
+        "max_size_kb": 200,
+        "unresolved_note": null,
+        "width_px": null
+      },
+      {
+        "doc_type_label": "Bank Passbook (first page)",
+        "file_formats": [
+          "PDF",
+          "JPG"
+        ],
+        "height_px": null,
+        "max_size_kb": 150,
+        "unresolved_note": null,
+        "width_px": null
+      }
+    ]
+  }
+}

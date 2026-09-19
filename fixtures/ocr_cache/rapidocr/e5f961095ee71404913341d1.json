@@ -1,0 +1,5 @@
+{
+  "source_file": "fixtures\\students\\mohammed_irfan\\documents\\marksheet.jpg",
+  "backend": "rapidocr",
+  "text": "Board ofSecondaryEducation\nMARKSHEET\nCertificate No:MAR-2026003-MOH\nName:\nMohammedIrfanSheikh\nFather's Name:\nAbdul Sheikh\nDOB:\n05/06/2007\nAddress:\nBhopal,MadhyaPradesh\nRoll No:\nMP-2026-33012\nMarks Percent:\n76.8%\nDate of Issue:\n25/05/2026\nSYNTHETIC \u2014NOT A REAL DOCUMENT"
+}

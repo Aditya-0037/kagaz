@@ -1,0 +1,5 @@
+{
+  "source_file": "fixtures\\students\\aditya_sharma\\documents\\bank_passbook.jpg",
+  "backend": "rapidocr",
+  "text": "Nationalised Bank of India (fictional)\nBANKPASSBOOK\u2014KYCPAGE\nCertificate No: BAN-2026004-ADI\nName:\nAditya Sharma\nFather's Name:\nRajeshKumarSharma\nDOB:\n22/11/2007\nAddress:\nLucknow,UttarPradesh\nAccountNo:\nXXXXXXXX7734\nBank Name:\nPunjab National Bank\nDate of Issue:\n14/02/2023\nSYNTHETIC-NOT A REAL DOCUMENT"
+}

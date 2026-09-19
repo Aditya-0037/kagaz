@@ -1,0 +1,11 @@
+{
+  "inputs": {
+    "image_sha256": "2d656ef1d2991ff69c1907fea9087a6dda26b46cd0e4b7bb56bac384cfcf86f9"
+  },
+  "model": "gemini-2.5-flash",
+  "prompt": "Transcribe every piece of text visible in this document image, exactly as written, preserving line breaks and field labels. Do not summarize, translate, or explain anything - output only the transcribed text.",
+  "provider": "vertex",
+  "response": {
+    "text": "Board of Secondary Education\nMARKSHEET\nCertificate No: MAR-2026003-ADI\n\nName:\nAditya Kumar Sharma\n\nFather's Name:\nRajesh Kumar Sharma\n\nDOB:\n22/11/2007\n\nAddress:\nLucknow, Uttar Pradesh\n\nRoll No:\nUP-2026-11982\n\nMarks Percent:\n91.2%\n\nDate of Issue:\n18/05/2026\n\nSYNTHETIC \u2014 NOT A REAL DOCUMENT\n"
+  }
+}

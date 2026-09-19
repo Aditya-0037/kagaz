@@ -1,0 +1,74 @@
+{
+  "student_id": "priya_nair",
+  "scenario": "clean \u2014 valid documents, photo needs reformatting",
+  "canonical_name": "Priya Ramesh Nair",
+  "documents": {
+    "income_certificate": {
+      "fields": {
+        "name": "Priya Ramesh Nair",
+        "father_name": "Ramesh Nair",
+        "dob": "12/03/2008"
+      },
+      "issue_date": "2026-04-10",
+      "valid_until": "2027-04-09",
+      "source_path": "fixtures\\students\\priya_nair\\documents\\income_certificate.jpg"
+    },
+    "caste_certificate": {
+      "fields": {
+        "name": "Priya Ramesh Nair",
+        "father_name": "Ramesh Nair",
+        "dob": "12/03/2008"
+      },
+      "issue_date": "2024-06-01",
+      "valid_until": "2029-06-01",
+      "source_path": "fixtures\\students\\priya_nair\\documents\\caste_certificate.jpg"
+    },
+    "domicile_certificate": {
+      "fields": {
+        "name": "Priya Ramesh Nair",
+        "father_name": "Ramesh Nair",
+        "dob": "12/03/2008"
+      },
+      "issue_date": "2023-01-15",
+      "valid_until": "2033-01-15",
+      "source_path": "fixtures\\students\\priya_nair\\documents\\domicile_certificate.jpg"
+    },
+    "marksheet": {
+      "fields": {
+        "name": "Priya Ramesh Nair",
+        "father_name": "Ramesh Nair",
+        "dob": "12/03/2008"
+      },
+      "issue_date": "2026-05-20",
+      "valid_until": null,
+      "source_path": "fixtures\\students\\priya_nair\\documents\\marksheet.jpg"
+    },
+    "bank_passbook": {
+      "fields": {
+        "name": "Priya Ramesh Nair",
+        "father_name": "Ramesh Nair",
+        "dob": "12/03/2008"
+      },
+      "issue_date": "2022-08-11",
+      "valid_until": null,
+      "source_path": "fixtures\\students\\priya_nair\\documents\\bank_passbook.jpg"
+    },
+    "signature": {
+      "fields": {
+        "name": "Priya Ramesh Nair"
+      },
+      "issue_date": null,
+      "valid_until": null,
+      "source_path": "fixtures\\students\\priya_nair\\documents\\signature.jpg"
+    },
+    "photo": {
+      "fields": {
+        "name": "Priya Ramesh Nair"
+      },
+      "issue_date": null,
+      "valid_until": null,
+      "source_path": "fixtures\\students\\priya_nair\\documents\\photo.jpg",
+      "note": "rendered at 2200x2900px \u2014 deliberately oversized for the formatter test"
+    }
+  }
+}

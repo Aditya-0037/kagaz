@@ -1,0 +1,11 @@
+{
+  "inputs": {
+    "image_sha256": "029fc4ec2297fed6c15b6e99c124cddb061a3fd38042e5b41c34404778b1fde1"
+  },
+  "model": "gemini-2.5-flash",
+  "prompt": "Transcribe every piece of text visible in this document image, exactly as written, preserving line breaks and field labels. Do not summarize, translate, or explain anything - output only the transcribed text.",
+  "provider": "vertex",
+  "response": {
+    "text": "Office of the District Magistrate\nDOMICILE CERTIFICATE\nCertificate No: DOM-2026002-ADI\n\nName:\nA. K. Sharma\n\nFather's Name:\nRajesh Kumar Sharma\n\nDOB:\n22/11/2007\n\nAddress:\nLucknow, Uttar Pradesh\n\nDate of Issue:\n01/07/2020\n\nValid Until:\n01/07/2030\n\nSYNTHETIC \u2014 NOT A REAL DOCUMENT\n"
+  }
+}

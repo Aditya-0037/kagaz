@@ -1,0 +1,11 @@
+{
+  "inputs": {
+    "image_sha256": "e4e5ecfb4f8a026ba3fdfe53660553a694ccfa858161ed28cfb1977f1f405e5f"
+  },
+  "model": "gemini-2.5-flash",
+  "prompt": "Transcribe every piece of text visible in this document image, exactly as written, preserving line breaks and field labels. Do not summarize, translate, or explain anything - output only the transcribed text.",
+  "provider": "vertex",
+  "response": {
+    "text": "Nationalised Bank of India (fictional)\nBANK PASSBOOK \u2014 KYC PAGE\nCertificate No: BAN-2026004-PRI\n\nName:\nPriya Ramesh Nair\nFather's Name:\nRamesh Nair\nDOB:\n12/03/2008\nAddress:\nKochi, Kerala\nAccount No:\nXXXXXXXX4821\nBank Name:\nState Bank of India\nDate of Issue:\n11/08/2022\n\nSYNTHETIC \u2014 NOT A REAL DOCUMENT\n"
+  }
+}

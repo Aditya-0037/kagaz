@@ -1,0 +1,19 @@
+{
+  "inputs": {
+    "call": "fields",
+    "scheme_id": "scheme_b_merit"
+  },
+  "model": "gemini-2.5-flash",
+  "prompt": "You are extracting application-form field labels from an Indian government scheme notification. Read the ENTIRE text below and list every particular the online application form asks the applicant to fill in (e.g. 'Full Name', 'Date of Birth', 'Bank Account Number'). Word each label exactly as the text words it. Do NOT include document names.\n\nSCHEME NOTIFICATION TEXT:\nState Merit Scholarship \u2014 2026\nThis scholarship is awarded purely on academic merit to students who have scored in the top\npercentile of their qualifying board examination. It is administered directly by the State\nDirectorate of Higher Education. T\nN\nDocuments Required\nE\nApplicants must submit their most recent Marksheet, a Bank Passbook copy for disbursal of the M\naward, and a recent Photograph as part of the online application. No other supporting\nU\ndocuments are required for this scheme.\nC\nThe last date for submission is 15th October 2026. O\nD\nParticulars Required on the Application Form\nL\nThe application form requires: Full Name (as per Aadhaar), Date of Birth, Merit Rank / Percentile\nA\nin Qualifying Examination, Mobile Number Linked to Aadhaar, Bank Account Number, and IFSC\nE\nCode.\nR\nA\nT\nO\nN\n\u2014\nC\nI\nT\nE\nH\nT\nN\nY\nS\n\nFormat Specifications\nPhotograph: JPG or JPEG format, maximum 30 KB, dimensions 200 x 230 pixels.\nMarksheet: PDF format, maximum 100 KB.\nT\nBank Passbook: All supporting documents must be uploaded in the prescribed format as\nN\nspecified by the Directorate.\nE\nM\nU\nC\nO\nD\nL\nA\nE\nR\nA\nT\nO\nN\n\u2014\nC\nI\nT\nE\nH\nT\nN\nY\nS",
+  "provider": "vertex",
+  "response": {
+    "fields": [
+      "Full Name (as per Aadhaar)",
+      "Date of Birth",
+      "Merit Rank / Percentile in Qualifying Examination",
+      "Mobile Number Linked to Aadhaar",
+      "Bank Account Number",
+      "IFSC Code"
+    ]
+  }
+}

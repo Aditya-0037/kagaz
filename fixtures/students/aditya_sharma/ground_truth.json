@@ -1,0 +1,74 @@
+{
+  "student_id": "aditya_sharma",
+  "scenario": "name variance across documents \u2014 should read as likely_fine",
+  "canonical_name": "Aditya Kumar Sharma",
+  "documents": {
+    "income_certificate": {
+      "fields": {
+        "name": "Aditya Kumar Sharma",
+        "father_name": "Rajesh Kumar Sharma",
+        "dob": "22/11/2007"
+      },
+      "issue_date": "2026-05-02",
+      "valid_until": "2027-05-01",
+      "source_path": "fixtures\\students\\aditya_sharma\\documents\\income_certificate.jpg"
+    },
+    "caste_certificate": {
+      "fields": {
+        "name": "Aditya Kumar Sharma",
+        "father_name": "Rajesh Kumar Sharma",
+        "dob": "22/11/2007"
+      },
+      "issue_date": "2021-03-10",
+      "valid_until": "2031-03-10",
+      "source_path": "fixtures\\students\\aditya_sharma\\documents\\caste_certificate.jpg"
+    },
+    "domicile_certificate": {
+      "fields": {
+        "name": "A. K. Sharma",
+        "father_name": "Rajesh Kumar Sharma",
+        "dob": "22/11/2007"
+      },
+      "issue_date": "2020-07-01",
+      "valid_until": "2030-07-01",
+      "source_path": "fixtures\\students\\aditya_sharma\\documents\\domicile_certificate.jpg"
+    },
+    "marksheet": {
+      "fields": {
+        "name": "Aditya Kumar Sharma",
+        "father_name": "Rajesh Kumar Sharma",
+        "dob": "22/11/2007"
+      },
+      "issue_date": "2026-05-18",
+      "valid_until": null,
+      "source_path": "fixtures\\students\\aditya_sharma\\documents\\marksheet.jpg"
+    },
+    "bank_passbook": {
+      "fields": {
+        "name": "Aditya Sharma",
+        "father_name": "Rajesh Kumar Sharma",
+        "dob": "22/11/2007"
+      },
+      "issue_date": "2023-02-14",
+      "valid_until": null,
+      "source_path": "fixtures\\students\\aditya_sharma\\documents\\bank_passbook.jpg"
+    },
+    "signature": {
+      "fields": {
+        "name": "Aditya Kumar Sharma"
+      },
+      "issue_date": null,
+      "valid_until": null,
+      "source_path": "fixtures\\students\\aditya_sharma\\documents\\signature.jpg"
+    },
+    "photo": {
+      "fields": {
+        "name": "Aditya Kumar Sharma"
+      },
+      "issue_date": null,
+      "valid_until": null,
+      "source_path": "fixtures\\students\\aditya_sharma\\documents\\photo.jpg",
+      "note": "rendered at 600x800px"
+    }
+  }
+}

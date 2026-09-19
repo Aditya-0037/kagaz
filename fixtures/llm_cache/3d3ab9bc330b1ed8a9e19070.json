@@ -1,0 +1,11 @@
+{
+  "inputs": {
+    "image_sha256": "3cf54fb29489690c7555aefdb117202fcea33a725032144b0d2f42a51f543256"
+  },
+  "model": "gemini-2.5-flash",
+  "prompt": "Transcribe every piece of text visible in this document image, exactly as written, preserving line breaks and field labels. Do not summarize, translate, or explain anything - output only the transcribed text.",
+  "provider": "vertex",
+  "response": {
+    "text": "Office of the District Magistrate\nCASTE CERTIFICATE\nCertificate No: CAS-2026001-ADI\n\nName:\nAditya Kumar Sharma\nFather's Name:\nRajesh Kumar Sharma\nDOB:\n22/11/2007\nAddress:\nLucknow, Uttar Pradesh\nCaste Category:\nGeneral\nDate of Issue:\n10/03/2021\nValid Until:\n10/03/2031\nSYNTHETIC \u2014 NOT A REAL DOCUMENT\n"
+  }
+}

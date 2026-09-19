@@ -1,0 +1,5 @@
+{
+  "source_file": "fixtures\\students\\aditya_sharma\\documents\\domicile_certificate.jpg",
+  "backend": "rapidocr",
+  "text": "Officeof theDistrictMagistrate\nDOMICILECERTIFICATE\nCertificate No:DOM-2026002-ADI\nName:\nA.K. Sharma\nFather's Name:\nRajesh Kumar Sharma\nDOB:\n22/11/2007\nAddress:\nLucknow, Uttar Pradesh\nDate of Issue:\n01/07/2020\nValid Until:\n01/07/2030\nSYNTHETIC-NOT A REAL DOCUMENT"
+}

@@ -1,0 +1,30 @@
+{
+  "inputs": {
+    "doc_type": "bank_passbook",
+    "student": "mohammed_irfan"
+  },
+  "model": "gemini-2.5-flash",
+  "prompt": "You are extracting fields from OCR text of an Indian bank passbook's KYC page.\n\nThe OCR text may have lost spaces between adjacent words on some lines\n(e.g. \"PriyaRameshNair\" instead of \"Priya Ramesh Nair\") \u2014 use the field\nlabel immediately before a value and your knowledge of Indian names to\nreconstruct the correct spacing. If a field is genuinely missing, garbled\nbeyond recognition, or absent from the text, leave it null. Never guess a\nvalue that isn't actually supported by the text.\n\nExtract: name, father_name (the \"Father's Name\" field), dob (as written),\naccount_no (as written, including any masking like X's), bank_name, and\nissue_date (as written). Bank passbooks don't have a validity/expiry date \u2014\nleave valid_until null regardless of what else is in the text.\n\nOCR TEXT:\nNationalised Bank of India (fictional)\nBANK PASSBOOK \u2014 KYC PAGE\nCertificate No: BAN-2026004-MOH\n\nName:\nMohammed Irfan Sheikh\nFather's Name:\nAbdul Sheikh\nDOB:\n05/06/2007\nAddress:\nBhopal, Madhya Pradesh\nAccount No:\nXXXXXXXX2290\nBank Name:\nBank of Baroda\nDate of Issue:\n30/09/2021\nSYNTHETIC - NOT A REAL DOCUMENT\n\n",
+  "provider": "vertex",
+  "response": {
+    "output": {
+      "account_no": "XXXXXXXX2290",
+      "annual_income": null,
+      "bank_name": "Bank of Baroda",
+      "caste_category": null,
+      "certificate_no": null,
+      "dob": "05/06/2007",
+      "father_name": "Abdul Sheikh",
+      "issue_date": "30/09/2021",
+      "marks_percent": null,
+      "name": "Mohammed Irfan Sheikh",
+      "roll_no": null,
+      "valid_until": null
+    },
+    "usage": {
+      "inputTokens": 404,
+      "outputTokens": 307,
+      "totalTokens": 711
+    }
+  }
+}

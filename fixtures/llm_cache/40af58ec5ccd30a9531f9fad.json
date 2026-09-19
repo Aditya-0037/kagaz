@@ -1,0 +1,11 @@
+{
+  "inputs": {
+    "image_sha256": "2b69fa2b9fb9b601d01bd93e24a5eadb70d2ed13d09143ac12699cfdecd91a8b"
+  },
+  "model": "gemini-2.5-flash",
+  "prompt": "Transcribe every piece of text visible in this document image, exactly as written, preserving line breaks and field labels. Do not summarize, translate, or explain anything - output only the transcribed text.",
+  "provider": "vertex",
+  "response": {
+    "text": "Office of the District Magistrate\nCASTE CERTIFICATE\nCertificate No: CAS-2026001-PRI\n\nName: Priya Ramesh Nair\nFather's Name: Ramesh Nair\nDOB: 12/03/2008\nAddress: Kochi, Kerala\nCaste Category: OBC\nDate of Issue: 01/06/2024\nValid Until: 01/06/2029\nSYNTHETIC \u2014 NOT A REAL DOCUMENT\n"
+  }
+}

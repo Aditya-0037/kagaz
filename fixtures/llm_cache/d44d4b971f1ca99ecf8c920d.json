@@ -1,0 +1,11 @@
+{
+  "inputs": {
+    "image_sha256": "b25b0a81c61625bf243db653a3c87758cb9ccbf8fc3efe095b9ac512ff6b6bf0"
+  },
+  "model": "gemini-2.5-flash",
+  "prompt": "Transcribe every piece of text visible in this document image, exactly as written, preserving line breaks and field labels. Do not summarize, translate, or explain anything - output only the transcribed text.",
+  "provider": "vertex",
+  "response": {
+    "text": "Office of the Tehsildar\nINCOME CERTIFICATE\nCertificate No: INC-2026000-ADI\n\nName: Aditya Kumar Sharma\n\nFather's Name: Rajesh Kumar Sharma\n\nDOB: 22/11/2007\n\nAddress: Lucknow, Uttar Pradesh\n\nAnnual Income: Rs. 2,40,000\n\nDate of Issue: 02/05/2026\n\nValid Until: 01/05/2027\n\nSYNTHETIC \u2014 NOT A REAL DOCUMENT\n"
+  }
+}

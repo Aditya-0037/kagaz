@@ -1,0 +1,11 @@
+{
+  "inputs": {
+    "image_sha256": "bb7094c89e661b6ad9f64f7da0683a1cd4d200901158f920ec97533149685852"
+  },
+  "model": "gemini-2.5-flash",
+  "prompt": "Transcribe every piece of text visible in this document image, exactly as written, preserving line breaks and field labels. Do not summarize, translate, or explain anything - output only the transcribed text.",
+  "provider": "vertex",
+  "response": {
+    "text": "Nationalised Bank of India (fictional)\nBANK PASSBOOK \u2014 KYC PAGE\nCertificate No: BAN-2026004-ADI\n\nName: Aditya Sharma\nFather's Name: Rajesh Kumar Sharma\nDOB: 22/11/2007\nAddress: Lucknow, Uttar Pradesh\nAccount No: XXXXXXXX7734\nBank Name: Punjab National Bank\nDate of Issue: 14/02/2023\nSYNTHETIC \u2014 NOT A REAL DOCUMENT\n"
+  }
+}

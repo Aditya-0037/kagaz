@@ -1,0 +1,5 @@
+{
+  "source_file": "fixtures\\students\\mohammed_irfan\\documents\\caste_certificate.jpg",
+  "backend": "rapidocr",
+  "text": "Officeof theDistrictMagistrate\nCASTECERTIFICATE\nCertificate No: CAS-2026001-MOH\nName:\nMohammedIrfanSheikh\nFather's Name:\nAbdul Sheikh\nDOB:\n05/06/2007\nAddress:\nBhopal,MadhyaPradesh\nCaste Category:\nOBC\nDate of Issue:\n05/01/2022\nValid Until:\n05/01/2032\nSYNTHETIC\u2014NOTA REAL DOCUMENT"
+}

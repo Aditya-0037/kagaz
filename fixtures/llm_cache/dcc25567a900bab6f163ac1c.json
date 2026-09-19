@@ -1,0 +1,11 @@
+{
+  "inputs": {
+    "image_sha256": "263dd25e724a3323fa4c7824d502b3cee4a90a26dfe3fcbc9b4db4caf2526c94"
+  },
+  "model": "gemini-2.5-flash",
+  "prompt": "Transcribe every piece of text visible in this document image, exactly as written, preserving line breaks and field labels. Do not summarize, translate, or explain anything - output only the transcribed text.",
+  "provider": "vertex",
+  "response": {
+    "text": "Office of the District Magistrate\nDOMICILE CERTIFICATE\nCertificate No: DOM-2026002-MOH\n\nName: Mohammed Irfan Sheikh\nFather's Name: Abdul Sheikh\nDOB: 06/05/2007\nAddress: Bhopal, Madhya Pradesh\nDate of Issue: 11/11/2019\nValid Until: 11/11/2029\nSYNTHETIC \u2014 NOT A REAL DOCUMENT\n"
+  }
+}

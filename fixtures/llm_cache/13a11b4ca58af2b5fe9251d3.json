@@ -1,0 +1,11 @@
+{
+  "inputs": {
+    "image_sha256": "96c1fc120d9e3ad5462c36db252a897b322383ba02b392785ce96aa6e7a131cd"
+  },
+  "model": "gemini-2.5-flash",
+  "prompt": "Transcribe every piece of text visible in this document image, exactly as written, preserving line breaks and field labels. Do not summarize, translate, or explain anything - output only the transcribed text.",
+  "provider": "vertex",
+  "response": {
+    "text": "Office of the Tehsildar\nINCOME CERTIFICATE\nCertificate No: INC-2026000-MOH\n\nName:\nMohammed Irfan Sheikh\nFather's Name:\nAbdul Sheikh\nDOB:\n05/06/2007\nAddress:\nBhopal, Madhya Pradesh\nAnnual Income:\nRs. 1,10,000\nDate of Issue:\n20/09/2025\nValid Until:\n19/09/2026\nSYNTHETIC \u2014 NOT A REAL DOCUMENT\n"
+  }
+}

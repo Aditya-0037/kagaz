@@ -1,0 +1,11 @@
+{
+  "inputs": {
+    "image_sha256": "050497101c7d45abc5ffde49ef4222df52c3993fdee01fe3442df56bedef9db4"
+  },
+  "model": "gemini-2.5-flash",
+  "prompt": "Transcribe every piece of text visible in this document image, exactly as written, preserving line breaks and field labels. Do not summarize, translate, or explain anything - output only the transcribed text.",
+  "provider": "vertex",
+  "response": {
+    "text": "Nationalised Bank of India (fictional)\nBANK PASSBOOK \u2014 KYC PAGE\nCertificate No: BAN-2026004-MOH\n\nName:\nMohammed Irfan Sheikh\nFather's Name:\nAbdul Sheikh\nDOB:\n05/06/2007\nAddress:\nBhopal, Madhya Pradesh\nAccount No:\nXXXXXXXX2290\nBank Name:\nBank of Baroda\nDate of Issue:\n30/09/2021\nSYNTHETIC - NOT A REAL DOCUMENT\n"
+  }
+}

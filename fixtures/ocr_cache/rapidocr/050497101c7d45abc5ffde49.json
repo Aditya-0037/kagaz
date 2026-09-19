@@ -1,0 +1,5 @@
+{
+  "source_file": "fixtures\\students\\mohammed_irfan\\documents\\bank_passbook.jpg",
+  "backend": "rapidocr",
+  "text": "Nationalised Bank of India (fictional)\nBANKPASSBOOK\u2014KYCPAGE\nCertificate No: BAN-2026004-MOH\nName:\nMohammedIrfanSheikh\nFather's Name:\nAbdul Sheikh\nDOB:\n05/06/2007\nAddress:\nBhopal,MadhyaPradesh\nAccountNo:\nXXXXXXXX2290\nBank Name:\nBank of Baroda\nDate of Issue:\n30/09/2021\nSYNTHETIC-NOT A REAL DOCUMENT"
+}

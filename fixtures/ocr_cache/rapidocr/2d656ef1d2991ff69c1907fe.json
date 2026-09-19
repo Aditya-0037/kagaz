@@ -1,0 +1,5 @@
+{
+  "source_file": "fixtures\\students\\aditya_sharma\\documents\\marksheet.jpg",
+  "backend": "rapidocr",
+  "text": "BoardofSecondaryEducation\nMARKSHEET\nCertificate No:MAR-2026003-ADI\nName:\nAdityaKumarSharma\nFather's Name:\nRajeshKumar Sharma\nDOB:\n22/11/2007\nAddress:\nLucknow,Uttar Pradesh\nRoll No:\nUP-2026-11982\nMarks Percent:\n91.2%\nDate of Issue:\n18/05/2026\nSYNTHETIC \u2014NOT A REAL DOCUMENT"
+}

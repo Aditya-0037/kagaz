@@ -1,0 +1,30 @@
+{
+  "inputs": {
+    "doc_type": "domicile_certificate",
+    "student": "priya_nair"
+  },
+  "model": "gemini-2.5-flash",
+  "prompt": "You are extracting fields from OCR text of an Indian domicile (residence) certificate.\n\nThe OCR text may have lost spaces between adjacent words on some lines\n(e.g. \"PriyaRameshNair\" instead of \"Priya Ramesh Nair\") \u2014 use the field\nlabel immediately before a value and your knowledge of Indian names to\nreconstruct the correct spacing. If a field is genuinely missing, garbled\nbeyond recognition, or absent from the text, leave it null. Never guess a\nvalue that isn't actually supported by the text.\n\nExtract: name, father_name (the \"Father's Name\" field), dob (as written),\ncertificate_no, issue_date (as written), and valid_until (the \"Valid\nUntil\" field, as written).\n\nOCR TEXT:\nOffice of the District Magistrate\nDOMICILE CERTIFICATE\nCertificate No: DOM-2026002-PRI\n\nName: Priya Ramesh Nair\n\nFather's Name: Ramesh Nair\n\nDOB: 12/03/2008\n\nAddress: Kochi, Kerala\n\nDate of Issue: 15/01/2023\n\nValid Until: 15/01/2033\n\nSYNTHETIC \u2014 NOT A REAL DOCUMENT\n\n",
+  "provider": "vertex",
+  "response": {
+    "output": {
+      "account_no": null,
+      "annual_income": null,
+      "bank_name": null,
+      "caste_category": null,
+      "certificate_no": "DOM-2026002-PRI",
+      "dob": "12/03/2008",
+      "father_name": "Ramesh Nair",
+      "issue_date": "15/01/2023",
+      "marks_percent": null,
+      "name": "Priya Ramesh Nair",
+      "roll_no": null,
+      "valid_until": "15/01/2033"
+    },
+    "usage": {
+      "inputTokens": 356,
+      "outputTokens": 411,
+      "totalTokens": 767
+    }
+  }
+}

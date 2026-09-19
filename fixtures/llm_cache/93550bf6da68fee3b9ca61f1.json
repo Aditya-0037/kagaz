@@ -1,0 +1,30 @@
+{
+  "inputs": {
+    "doc_type": "caste_certificate",
+    "student": "mohammed_irfan"
+  },
+  "model": "gemini-2.5-flash",
+  "prompt": "You are extracting fields from OCR text of an Indian caste certificate.\n\nThe OCR text may have lost spaces between adjacent words on some lines\n(e.g. \"PriyaRameshNair\" instead of \"Priya Ramesh Nair\") \u2014 use the field\nlabel immediately before a value and your knowledge of Indian names to\nreconstruct the correct spacing. If a field is genuinely missing, garbled\nbeyond recognition, or absent from the text, leave it null. Never guess a\nvalue that isn't actually supported by the text.\n\nExtract: name, father_name (the \"Father's Name\" field), dob (as written),\ncertificate_no, caste_category (e.g. \"OBC\", \"General\", \"SC\", \"ST\"),\nissue_date (as written), and valid_until (the \"Valid Until\" field, as\nwritten).\n\nOCR TEXT:\nOffice of the District Magistrate\nCASTE CERTIFICATE\nCertificate No: CAS-2026001-MOH\n\nName: Mohammed Irfan Sheikh\nFather's Name: Abdul Sheikh\nDOB: 05/06/2007\nAddress: Bhopal, Madhya Pradesh\nCaste Category: OBC\nDate of Issue: 05/01/2022\nValid Until: 05/01/2032\nSYNTHETIC - NOT A REAL DOCUMENT\n\n",
+  "provider": "vertex",
+  "response": {
+    "output": {
+      "account_no": null,
+      "annual_income": null,
+      "bank_name": null,
+      "caste_category": "OBC",
+      "certificate_no": "CAS-2026001-MOH",
+      "dob": "05/06/2007",
+      "father_name": "Abdul Sheikh",
+      "issue_date": "05/01/2022",
+      "marks_percent": null,
+      "name": "Mohammed Irfan Sheikh",
+      "roll_no": null,
+      "valid_until": "05/01/2032"
+    },
+    "usage": {
+      "inputTokens": 382,
+      "outputTokens": 278,
+      "totalTokens": 660
+    }
+  }
+}
