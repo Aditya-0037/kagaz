@@ -37,8 +37,20 @@ def _start_run(student_id: str, scheme_id: str = "scheme_a_postmatric") -> str:
     return response.headers["location"]
 
 
-def test_index_lists_students_and_schemes():
+def test_landing_page_shows_every_scheme_input_method():
+    # "/" is the product landing page, not the demo picker — a visitor has
+    # to be able to see that link/screenshot/PDF/text input all exist
+    # without signing up first.
     response = client.get("/")
+    assert response.status_code == 200
+    assert "Paste a link" in response.text
+    assert "Upload a screenshot" in response.text
+    assert "Upload the PDF" in response.text
+    assert "Paste the text" in response.text
+
+
+def test_demo_lists_students_and_schemes():
+    response = client.get("/demo")
     assert response.status_code == 200
     assert "Priya Ramesh Nair" in response.text
     assert "Mohammed Irfan Sheikh" in response.text

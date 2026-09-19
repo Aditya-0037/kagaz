@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% block title %}{{ run.scheme_source }} — Kagaz{% endblock %}
+{% block notice %}
+<div class="notice notice-account">Your account — real documents, processed live, stored under your login</div>
+{% endblock %}
+{% block crumb %}<div class="crumb"><a href="/app">Dashboard</a> / Application</div>{% endblock %}
+{% block heading %}{{ run.scheme_source }}{% endblock %}
+
+{% block head %}
+{% if state and state.status in ("running", "awaiting_decision") %}
+<meta http-equiv="refresh" content="1.5">
+{% endif %}
+{% endblock %}
+
+{% block content %}
+
+{% if state is none %}
+  <div class="card">
+    <h2>Status: {{ run.status }}</h2>
+    <p class="muted">This run's live progress isn't available right now — the server restarted since it ran.
+    {% if run.status == "complete" %}It finished with {{ run.findings_count }} finding(s) and
+    {{ run.blocker_count }} blocker(s). Start a new application to get a fresh downloadable folder.{% endif %}</p>
+    <div class="btnrow" style="margin-top:14px"><a href="/app/new" class="btn btn-primary btn-sm">New application</a></div>
+  </div>
+
+{% elif state.status == "running" %}
+  <div class="card">
+    <h2>Running the audit…</h2>
+    <p class="muted">Reading your documents, extracting fields, cross-checking names and dates,
+    and checking validity against the deadline. This page refreshes on its own.</p>
+    {% if state.reviewed_count %}
+    <p class="tiny">{{ state.reviewed_count }} decision(s) recorded so far.</p>
+    {% endif %}
+  </div>
+
+{% elif state.status == "awaiting_decision" %}
+  <div class="card escalation">
+    <div class="card-row" style="margin-bottom:10px">
+      <h2 style="margin:0">Your decision needed</h2>
+      <span class="pill pill-danger">{{ state.pending_finding.severity }}</span>
+    </div>
+    <p class="muted" style="margin-top:0">Kagaz stopped here. Nothing else runs until you decide —
+    one finding at a time, never batched.</p>
+
+    <div class="card card-tight severity-blocker" style="margin:16px 0 0; box-shadow:none">
+      <p class="tiny" style="margin:0 0 4px; text-transform:uppercase; letter-spacing:.05em">
+        {{ state.pending_finding.category.replace("_", " ") }}
+      </p>
+      <p style="margin:0 0 8px"><strong>{{ state.pending_finding.message }}</strong></p>
+      <ul style="margin:0; padding-left:18px">
+        {% for ev in state.pending_finding.evidence %}
+        <li class="evidence">{{ ev }}</li>
+        {% endfor %}
+      </ul>
+      {% if state.pending_finding.suggested_action %}
+      <p class="muted" style="margin:10px 0 0">Suggested: {{ state.pending_finding.suggested_action }}</p>
+      {% endif %}
+    </div>
+
+    <form method="post" action="/app/runs/{{ run_id }}/decide">
+      <label for="note">Note <span class="opt">— why you decided this (optional)</span></label>
+      <input type="text" name="note" id="note" placeholder="e.g. confirmed the spelling with the bank">
+      <div class="btnrow" style="margin-top:18px">
+        <button type="submit" name="decision" value="accept" class="btn">Accept — it's fine</button>
+        <button type="submit" name="decision" value="override" class="btn-danger">Override — I'll fix it</button>
+        <button type="submit" name="decision" value="defer" class="btn-warn">Defer — decide later</button>
+      </div>
+    </form>
+  </div>
+
+{% elif state.status == "error" %}
+  <div class="card severity-blocker">
+    <h2>Something went wrong</h2>
+    <p class="muted">{{ state.error }}</p>
+    <div class="btnrow" style="margin-top:14px"><a href="/app/new" class="btn btn-sm">Try again</a></div>
+  </div>
+
+{% elif state.status == "complete" %}
+  {% set blockers = state.result.findings | selectattr("severity", "equalto", "blocker") | list %}
+  <div class="card">
+    <div class="card-row">
+      <div class="stats">
+        <div class="stat"><span class="n">{{ state.result.findings | length }}</span><span class="l">finding(s)</span></div>
+        <div class="stat"><span class="n" {% if blockers %}style="color:var(--danger)"{% endif %}>{{ blockers | length }}</span><span class="l">blocker(s)</span></div>
+        <div class="stat"><span class="n">{{ "%.1f"|format(state.result.duration_seconds) }}s</span><span class="l">wall clock</span></div>
+        <div class="stat"><span class="n">{{ state.result.token_usage.get("totalTokens", 0) }}</span><span class="l">tokens</span></div>
+      </div>
+      <a class="btn btn-primary" href="/app/runs/{{ run_id }}/download">Download folder</a>
+    </div>
+    <p class="tiny" style="margin:14px 0 0">Kagaz doesn't submit anything — you do.</p>
+    <hr class="sep">
+    <h3>What's in the folder</h3>
+    <div class="grid grid-2" style="margin-top:10px">
+      <div>
+        <p style="margin:0 0 3px"><strong>values.csv</strong> — details to copy in</p>
+        <p class="tiny" style="margin:0">Each field this form asks for, next to the value read off your
+        own documents. Fields Kagaz couldn't source are left blank, never guessed.</p>
+      </div>
+      <div>
+        <p style="margin:0 0 3px"><strong>documents/</strong> — resized and reformatted</p>
+        <p class="tiny" style="margin:0">Converted to the sizes and file types this form asks for.
+        Your locker originals are untouched.</p>
+      </div>
+      <div>
+        <p style="margin:0 0 3px"><strong>checklist.md</strong> — verified vs. check-yourself</p>
+        <p class="tiny" style="margin:0">The same split you see below, in writing.</p>
+      </div>
+      <div>
+        <p style="margin:0 0 3px"><strong>audit_report.pdf</strong> — findings and decisions</p>
+        <p class="tiny" style="margin:0">Every finding, its evidence, and what you decided about it.</p>
+      </div>
+    </div>
+  </div>
+
+  {% if state.result.requirement.max_family_income_inr or state.result.requirement.eligibility_criteria %}
+  <div class="card">
+    <div class="card-row" style="margin-bottom:4px">
+      <h2 style="margin:0">Eligibility this form states</h2>
+      {% if state.result.requirement.max_family_income_inr %}
+      <span class="pill pill-warn">Income limit {{ format_inr(state.result.requirement.max_family_income_inr) }}/yr</span>
+      {% endif %}
+    </div>
+    <ul style="margin:10px 0 0; padding-left:18px">
+      {% for c in state.result.requirement.eligibility_criteria %}
+      <li class="evidence" style="margin-bottom:6px">{{ c }}</li>
+      {% endfor %}
+    </ul>
+    <p class="tiny" style="margin:10px 0 0">Kagaz checks the income figure against your income
+    certificate. The rest are for you to confirm — they aren't stated on your documents.</p>
+  </div>
+  {% endif %}
+
+  <div class="card">
+    <div class="card-row" style="margin-bottom:4px">
+      <h2 style="margin:0">Verified from your documents</h2>
+      <span class="pill pill-brand">Kagaz checked these</span>
+    </div>
+    {% if not state.result.findings %}
+      <div class="empty-state" style="padding:22px">
+        <span class="ico">✓</span>
+        No problems found — every document checked out against this scheme's requirements.
+      </div>
+    {% endif %}
+    {% for severity in ["blocker", "worth_knowing", "likely_fine"] %}
+      {% set matching = state.result.findings | selectattr("severity", "equalto", severity) | list %}
+      {% if matching %}
+      <div class="card card-tight severity-{{ severity }}" style="margin:12px 0 0; box-shadow:none">
+        <div class="card-row" style="margin-bottom:6px">
+          <h3 style="margin:0">
+            {% if severity == "blocker" %}Blockers
+            {% elif severity == "worth_knowing" %}Worth knowing
+            {% else %}Likely fine{% endif %}
+          </h3>
+          <span class="pill {% if severity == 'blocker' %}pill-danger{% elif severity == 'worth_knowing' %}pill-warn{% else %}pill-ok{% endif %}">{{ matching | length }}</span>
+        </div>
+        {% for f in matching %}
+        <div class="finding">
+          <p style="margin:0 0 5px"><strong>{{ f.message }}</strong></p>
+          <ul style="margin:0; padding-left:18px">
+            {% for ev in f.evidence %}<li class="evidence">{{ ev }}</li>{% endfor %}
+          </ul>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+
+  <div class="card">
+    <div class="card-row" style="margin-bottom:4px">
+      <h2 style="margin:0">Kagaz cannot verify this</h2>
+      <span class="pill pill-warn">Check these yourself</span>
+    </div>
+    <p class="muted" style="margin-top:0">These are common rejection reasons that no document check can
+    see — they're facts about a portal or a bank account's linkage, not anything printed on a document.</p>
+    <ul style="margin:12px 0 0; padding-left:18px">
+      {% for cause in non_document_causes %}
+      <li class="evidence" style="margin-bottom:9px">{{ cause }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  {% if state.result.decision_log %}
+  <div class="card">
+    <h2>Decision log</h2>
+    <table class="plain">
+      <tr><th>When</th><th>Decision</th><th>Finding</th><th>Note</th></tr>
+      {% for d in state.result.decision_log %}
+      <tr>
+        <td class="tiny">{{ d.decided_at.strftime("%H:%M:%S") }}</td>
+        <td><span class="pill {% if d.decision == 'override' %}pill-danger{% elif d.decision == 'defer' %}pill-warn{% else %}pill-ok{% endif %}">{{ d.decision }}</span></td>
+        <td class="muted">{{ d.finding.message }}</td>
+        <td class="muted">{{ d.note or "—" }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% endif %}
+{% endif %}
+
+{% endblock %}

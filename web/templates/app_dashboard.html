@@ -1,21 +1,96 @@
 {% extends "base.html" %}
-{% block title %} — your applications{% endblock %}
-{% block banner %}
-<div class="banner-account">YOUR ACCOUNT — real documents, processed live, stored under your login</div>
+{% block title %}Dashboard — Kagaz{% endblock %}
+{% block notice %}
+<div class="notice notice-account">Your account — real documents, processed live, stored under your login</div>
 {% endblock %}
-{% block heading %} — your applications{% endblock %}
+{% block heading %}Your dashboard{% endblock %}
+{% block lede %}<p class="lede">Signed in as {{ user.email }}.</p>{% endblock %}
+
 {% block content %}
-<div class="card">
-  <p class="muted">Signed in as {{ user.email }}. <form method="post" action="/logout" style="display:inline"><button type="submit">Log out</button></form></p>
+
+<div class="grid grid-3" style="margin-bottom:18px">
+  <div class="card" style="margin:0">
+    <span class="stat"><span class="n">{{ document_count }}</span><span class="l">documents in your locker</span></span>
+    <div class="btnrow" style="margin-top:14px"><a href="/app/documents" class="btn btn-sm">Open locker</a></div>
+  </div>
+  <div class="card" style="margin:0; {% if expiring %}border-left:4px solid var(--danger){% endif %}">
+    <span class="stat">
+      <span class="n" {% if expiring %}style="color:var(--danger)"{% endif %}>{{ expiring | length }}</span>
+      <span class="l">expired or expiring soon</span>
+    </span>
+    <div class="btnrow" style="margin-top:14px">
+      <a href="/app/documents" class="btn btn-sm">{% if expiring %}Review now{% else %}All clear{% endif %}</a>
+    </div>
+  </div>
+  <div class="card" style="margin:0; background:var(--brand-soft); border-color:#c7d2fe">
+    <h3 style="margin-bottom:4px">Check a new form</h3>
+    <p class="tiny" style="margin:0 0 14px">Paste a link, screenshot, PDF, or text.</p>
+    <div class="btnrow"><a href="/app/new" class="btn btn-primary btn-sm">New application</a></div>
+  </div>
 </div>
-{% if runs %}
-{% for run in runs %}
-<div class="card">
-  <h3>{{ run.scheme_source }}</h3>
-  <p class="muted">Status: {{ run.status }} — started {{ run.created_at }}</p>
+
+{% if expiring %}
+<div class="card severity-blocker">
+  <h2>Renew these</h2>
+  <p class="muted" style="margin-top:0">A lapsed certificate is one of the most common reasons an
+  otherwise-correct application is rejected. These take weeks to reissue — start now.</p>
+  <table class="plain">
+    <tr><th>Document</th><th>Status</th><th>What to do</th></tr>
+    {% for d in expiring %}
+    <tr>
+      <td><strong>{{ doc_type_labels.get(d.doc_type, d.doc_type) }}</strong>
+        <div class="tiny">{{ d.label }}</div></td>
+      <td>
+        {% if expiry_status(d.expiry_date) == "expired" %}
+          <span class="pill pill-danger">Expired {{ d.expiry_date }}</span>
+        {% else %}
+          <span class="pill pill-warn">Expires {{ d.expiry_date }}</span>
+        {% endif %}
+      </td>
+      <td class="muted">{{ renewal_note(d.expiry_date) }}</td>
+    </tr>
+    {% endfor %}
+  </table>
 </div>
-{% endfor %}
-{% else %}
-<div class="card"><p class="muted">No applications yet.</p></div>
 {% endif %}
+
+<div class="card">
+  <div class="card-row" style="margin-bottom:6px">
+    <h2 style="margin:0">Your applications</h2>
+    {% if runs %}<a href="/app/new" class="btn btn-sm">New</a>{% endif %}
+  </div>
+  {% if runs %}
+  <table class="plain">
+    <tr><th>Scheme</th><th>Status</th><th>Started</th><th></th></tr>
+    {% for run in runs %}
+    <tr>
+      <td><strong>{{ run.scheme_source }}</strong></td>
+      <td>
+        {% if run.status == "complete" %}
+          <span class="pill pill-ok">Complete{% if run.blocker_count %} · {{ run.blocker_count }} blocker(s){% endif %}</span>
+        {% elif run.status == "error" %}<span class="pill pill-danger">Error</span>
+        {% elif run.status in ("running", "awaiting_decision") %}<span class="pill pill-warn">In progress</span>
+        {% else %}<span class="pill pill-muted">Draft</span>{% endif %}
+      </td>
+      <td class="muted">{{ run.created_at[:16].replace("T", " ") if run.created_at else "" }}</td>
+      <td style="text-align:right">
+        {% if run.status == "draft" %}
+          <a href="/app/runs/{{ run.id }}/match" class="btn btn-sm">Continue</a>
+        {% else %}
+          <a href="/app/runs/{{ run.id }}" class="btn btn-sm">Open</a>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <div class="empty-state">
+    <span class="ico">📄</span>
+    No applications yet.<br>
+    <div class="btnrow" style="justify-content:center; margin-top:14px">
+      <a href="/app/new" class="btn btn-primary">Start your first one</a>
+    </div>
+  </div>
+  {% endif %}
+</div>
 {% endblock %}

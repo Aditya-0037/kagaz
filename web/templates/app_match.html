@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}{{ requirement.scheme_name }} — match documents{% endblock %}
+{% block notice %}
+<div class="notice notice-account">Your account — real documents, processed live, stored under your login</div>
+{% endblock %}
+{% block crumb %}<div class="crumb"><a href="/app">Dashboard</a> / <a href="/app/new">New application</a> / Match documents</div>{% endblock %}
+{% block heading %}{{ requirement.scheme_name }}{% endblock %}
+{% block lede %}<p class="lede">Kagaz read the scheme and found
+  <strong>{{ requirement.required_documents | length }} required document(s)</strong>.
+  Pick one from your locker for each, or upload it now.</p>{% endblock %}
+
+{% block content %}
+
+<div class="card card-tight">
+  <div class="card-row">
+    <div>
+      {% if requirement.deadline %}
+        <span class="pill pill-brand">Deadline {{ requirement.deadline }}</span>
+      {% else %}
+        <span class="pill pill-muted">No deadline found</span>
+      {% endif %}
+      {% if requirement.max_family_income_inr %}
+        <span class="pill pill-warn">Income limit {{ format_inr(requirement.max_family_income_inr) }}/yr</span>
+      {% endif %}
+      <span class="pill pill-muted">Read from: {{ requirement.source }}</span>
+      <span class="pill pill-muted">Confidence {{ (requirement.confidence * 100) | round | int }}%</span>
+    </div>
+    <a href="/app/new" class="btn btn-sm">Start over</a>
+  </div>
+</div>
+
+{% if requirement.eligibility_criteria or requirement.max_family_income_inr %}
+<div class="card">
+  <h3>Who this form says is eligible</h3>
+  <p class="muted" style="margin-top:0">Read from this form — not assumed from any other scheme.</p>
+  <ul style="margin:10px 0 0; padding-left:18px">
+    {% if requirement.max_family_income_inr %}
+    <li class="evidence" style="margin-bottom:6px">
+      <strong>Family income must not exceed {{ format_inr(requirement.max_family_income_inr) }} per year.</strong>
+      Kagaz checks this against the figure on your income certificate.
+    </li>
+    {% endif %}
+    {% for c in requirement.eligibility_criteria %}
+    <li class="evidence" style="margin-bottom:6px">{{ c }}</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+{% if requirement.unresolved %}
+<div class="card severity-worth_knowing">
+  <h3>Kagaz couldn't determine these from the scheme text</h3>
+  <ul class="muted" style="margin:6px 0 0; padding-left:20px">
+    {% for u in requirement.unresolved %}<li>{{ u }}</li>{% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+<form method="post" action="/app/runs/{{ run_id }}/match" enctype="multipart/form-data">
+  {% for rd in requirement.required_documents %}
+  {% set options = locker_by_type.get(rd.doc_type, []) %}
+  <div class="card">
+    <div class="card-row" style="margin-bottom:4px">
+      <h3 style="margin:0">{{ doc_type_labels.get(rd.doc_type, rd.doc_type) }}</h3>
+      {% if options %}
+        <span class="pill pill-ok">{{ options | length }} in your locker</span>
+      {% else %}
+        <span class="pill pill-muted">Not in locker yet</span>
+      {% endif %}
+    </div>
+
+    {% if rd.file_formats or rd.max_size_kb or rd.dimensions_px %}
+    <p class="tiny" style="margin:0 0 4px">
+      Portal requires:
+      {% if rd.file_formats %}{{ rd.file_formats | join("/") | upper }}{% endif %}
+      {% if rd.max_size_kb %} · max {{ rd.max_size_kb }} KB{% endif %}
+      {% if rd.dimensions_px %} · {{ rd.dimensions_px[0] }}×{{ rd.dimensions_px[1] }} px{% endif %}
+      — Kagaz converts your file to this automatically.
+    </p>
+    {% endif %}
+
+    <label for="choice_{{ rd.doc_type }}">Use</label>
+    <select name="choice_{{ rd.doc_type }}" id="choice_{{ rd.doc_type }}" class="choice-select" data-doc-type="{{ rd.doc_type }}">
+      {% for opt in options %}
+      <option value="{{ opt.id }}">From locker — {{ opt.label }} ({{ opt.filename }})</option>
+      {% endfor %}
+      <option value="upload" {{ "selected" if not options else "" }}>Upload a new file…</option>
+      <option value="none">Skip — I don't have this yet</option>
+    </select>
+
+    <div class="upload-block" data-doc-type="{{ rd.doc_type }}" style="{{ 'display:none' if options else '' }}">
+      <div class="grid grid-2" style="gap:0 18px">
+        <div>
+          <label for="file_{{ rd.doc_type }}">File <span class="opt">— JPG, PNG or PDF</span></label>
+          <input type="file" name="file_{{ rd.doc_type }}" id="file_{{ rd.doc_type }}"
+                 accept=".jpg,.jpeg,.png,.webp,.bmp,.tif,.tiff,.pdf">
+        </div>
+        <div>
+          <label for="expiry_{{ rd.doc_type }}">Expiry date <span class="opt">(optional)</span></label>
+          <input type="date" name="expiry_{{ rd.doc_type }}" id="expiry_{{ rd.doc_type }}">
+        </div>
+      </div>
+      <p class="tiny" style="margin-top:8px">This also gets saved to your locker for next time.</p>
+    </div>
+  </div>
+  {% endfor %}
+
+  <div class="btnrow">
+    <button type="submit" class="btn-primary btn-lg">Run the audit</button>
+  </div>
+  <p class="tiny" style="margin-top:12px">Kagaz reads each document, cross-checks names and dates across
+  all of them, and checks validity against the deadline. It pauses for your decision on anything ambiguous.</p>
+</form>
+
+<script>
+  document.querySelectorAll(".choice-select").forEach(function (select) {
+    var docType = select.getAttribute("data-doc-type");
+    var block = document.querySelector('.upload-block[data-doc-type="' + docType + '"]');
+    function sync() { block.style.display = select.value === "upload" ? "" : "none"; }
+    select.addEventListener("change", sync);
+    sync();
+  });
+</script>
+{% endblock %}

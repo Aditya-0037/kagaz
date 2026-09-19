@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}New application — Kagaz{% endblock %}
+{% block notice %}
+<div class="notice notice-account">Your account — real documents, processed live, stored under your login</div>
+{% endblock %}
+{% block crumb %}<div class="crumb"><a href="/app">Dashboard</a> / New application</div>{% endblock %}
+{% block heading %}Start a new application{% endblock %}
+{% block lede %}<p class="lede">Tell Kagaz about the scheme however is easiest. It reads the requirements
+  live and builds the document checklist for you.</p>{% endblock %}
+
+{% block content %}
+
+{% if error %}<div class="alert error">{{ error }}</div>{% endif %}
+
+<form method="post" action="/app/new" enctype="multipart/form-data" id="new-app-form">
+  <input type="hidden" name="tier" id="tier" value="url">
+
+  <div class="card">
+    <h2>1. How do you want to give Kagaz the scheme?</h2>
+    <div class="methods" id="methods">
+
+      <div class="method active" data-method="url" tabindex="0" role="button">
+        <div class="ico">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+          </svg>
+        </div>
+        <div class="t">Paste a link</div>
+        <div class="d">The scheme's webpage or PDF URL</div>
+      </div>
+
+      <div class="method" data-method="screenshot" tabindex="0" role="button">
+        <div class="ico">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="1.5"/>
+            <path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/>
+          </svg>
+        </div>
+        <div class="t">Upload a screenshot</div>
+        <div class="d">A photo or screenshot of the notice</div>
+      </div>
+
+      <div class="method" data-method="pdf" tabindex="0" role="button">
+        <div class="ico">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v5h6"/>
+            <path d="M16 13H8M16 17H8"/>
+          </svg>
+        </div>
+        <div class="t">Upload the PDF</div>
+        <div class="d">The official notification file</div>
+      </div>
+
+      <div class="method" data-method="paste" tabindex="0" role="button">
+        <div class="ico">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+            <rect x="8" y="2" width="8" height="4" rx="1"/><path d="M12 11h4M12 15h4M8 11h.01M8 15h.01"/>
+          </svg>
+        </div>
+        <div class="t">Paste the text</div>
+        <div class="d">Copy the rules from anywhere</div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>2. The scheme</h2>
+
+    <div class="panel active" data-panel="url">
+      <label for="url">Scheme notification URL</label>
+      <input type="url" name="url" id="url" placeholder="https://scholarships.gov.in/...">
+      <p class="tiny" style="margin-top:7px">Kagaz fetches this one page directly — no login, no crawling,
+      no submitting. Works for a PDF link or a regular web page.</p>
+    </div>
+
+    <div class="panel" data-panel="screenshot">
+      <label for="screenshot_file">Screenshot or photo of the notification</label>
+      <input type="file" name="screenshot_file" id="screenshot_file" accept="image/*">
+      <p class="tiny" style="margin-top:7px">PNG or JPEG. A clear phone photo of a printed notice works too.</p>
+    </div>
+
+    <div class="panel" data-panel="pdf">
+      <label for="pdf_file">Scheme notification PDF</label>
+      <input type="file" name="pdf_file" id="pdf_file" accept="application/pdf">
+    </div>
+
+    <div class="panel" data-panel="paste">
+      <label for="text">Paste the scheme's text</label>
+      <textarea name="text" id="text" placeholder="Paste the eligibility rules, the list of required documents, format requirements, and the deadline..."></textarea>
+    </div>
+
+    <label for="scheme_name">Name this application <span class="opt">(optional)</span></label>
+    <input type="text" name="scheme_name" id="scheme_name" placeholder="e.g. State Post-Matric Scholarship 2026-27">
+  </div>
+
+  <div class="btnrow">
+    <button type="submit" class="btn btn-primary btn-lg">Extract requirements</button>
+    <a href="/app" class="btn btn-lg">Cancel</a>
+  </div>
+  <p class="tiny" style="margin-top:12px">This runs a live model call on the scheme text — it is never
+  cached, and your documents are not read at this step.</p>
+</form>
+
+<script>
+  (function () {
+    var methods = document.querySelectorAll("#methods .method");
+    var panels = document.querySelectorAll(".panel");
+    var tierInput = document.getElementById("tier");
+    function select(name) {
+      methods.forEach(function (m) { m.classList.toggle("active", m.getAttribute("data-method") === name); });
+      panels.forEach(function (p) { p.classList.toggle("active", p.getAttribute("data-panel") === name); });
+      tierInput.value = name;
+    }
+    methods.forEach(function (m) {
+      var name = m.getAttribute("data-method");
+      m.addEventListener("click", function () { select(name); });
+      m.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(name); }
+      });
+    });
+  })();
+</script>
+{% endblock %}

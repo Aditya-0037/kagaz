@@ -1,21 +1,22 @@
 {% extends "base.html" %}
-{% block title %} — log in{% endblock %}
-{% block banner %}
-<div class="banner-account">YOUR ACCOUNT — real documents, processed live, stored under your login</div>
-{% endblock %}
-{% block heading %} — log in{% endblock %}
+{% block title %}Log in — Kagaz{% endblock %}
+{% block heading %}Welcome back{% endblock %}
+{% block lede %}<p class="lede">Log in to reach your locker and applications.</p>{% endblock %}
 {% block content %}
-<div class="card">
-  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+<div class="card" style="max-width:430px">
+  {% if error %}<div class="alert error">{{ error }}</div>{% endif %}
   <form method="post" action="/login">
     <label for="email">Email</label>
-    <input type="text" name="email" id="email" required>
+    <input type="email" name="email" id="email" required autofocus>
 
     <label for="password">Password</label>
     <input type="password" name="password" id="password" required>
 
-    <p style="margin-top:20px"><button type="submit" class="btn-primary">Log in</button></p>
+    <div class="btnrow" style="margin-top:22px">
+      <button type="submit" class="btn-primary btn-lg">Log in</button>
+    </div>
   </form>
-  <p class="muted" style="margin-top:14px">No account yet? <a href="/signup">Sign up</a></p>
+  <hr class="sep">
+  <p class="muted" style="margin:0">No account yet? <a href="/signup">Create one</a></p>
 </div>
 {% endblock %}

@@ -1,11 +1,19 @@
 {% extends "base.html" %}
-{% block heading %} — pre-submission audit{% endblock %}
+{% block title %}Demo — Kagaz{% endblock %}
+{% block notice %}
+<div class="notice notice-demo">Synthetic demo data — fictional students, generated documents, no real people</div>
+{% if kagaz_llm_mode() == "replay" %}
+<div class="notice notice-replay">Replay mode: every model response below is a recorded fixture — instant, free, fully reproducible</div>
+{% endif %}
+{% endblock %}
+{% block heading %}Try it on sample data{% endblock %}
+{% block lede %}<p class="lede">Three fictional students, two real scheme notification PDFs. Pick a pair and
+  watch the full audit run — requirement extraction, document verification, cross-checking, and the
+  escalation screen where Kagaz pauses for a human. To run this on your own documents,
+  <a href="/signup">create a locker</a>.</p>{% endblock %}
+
 {% block content %}
-<div class="card">
-  <p class="muted">Pick a student and a scheme. Kagaz extracts the scheme's real
-  requirements, verifies the student's documents against them, and flags
-  anything a human should look at before submission — it never submits
-  anything itself.</p>
+<div class="card" style="max-width:560px">
   <form method="post" action="/run">
     <label for="student_id">Student</label>
     <select name="student_id" id="student_id">
@@ -21,7 +29,16 @@
       {% endfor %}
     </select>
 
-    <p style="margin-top:20px"><button type="submit" class="btn-primary">Run audit</button></p>
+    <div class="btnrow" style="margin-top:22px">
+      <button type="submit" class="btn-primary btn-lg">Run the audit</button>
+    </div>
   </form>
+</div>
+
+<div class="card card-tight" style="max-width:560px; background:var(--brand-soft); border-color:#c7d2fe">
+  <p class="muted" style="margin:0; color:var(--brand)">
+    <strong>Tip:</strong> pick <em>Mohammed Irfan Sheikh</em> to see the escalation screen — his documents
+    have a transposed date of birth and a certificate that expires before the deadline.
+  </p>
 </div>
 {% endblock %}

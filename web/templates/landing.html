@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+{% block title %}Kagaz — your document locker for Indian scheme forms{% endblock %}
+{% block wrapclass %}wrap-wide{% endblock %}
+{% block pagehead %}{% endblock %}
+
+{% block content %}
+
+<section class="hero">
+  <span class="eyebrow">Document locker &amp; form assistant</span>
+  <h1>Your documents, kept once.<br><span class="accent">Ready for every form.</span></h1>
+  <p>Keep your certificates in one locker and Kagaz warns you before they expire. Point it at any
+  form — a link, a screenshot, a PDF, or pasted text — and it gives you the details to copy into the
+  form, your documents converted to that form's required sizes and formats, and a checklist of what
+  would actually get the application rejected.</p>
+  <div class="btnrow">
+    <a href="/signup" class="btn btn-primary btn-lg">Create your free locker</a>
+    <a href="/demo" class="btn btn-lg">See it run on sample data</a>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-title">
+    <h2>Three things Kagaz does</h2>
+  </div>
+  <div class="steps">
+    <div class="step">
+      <div class="num">1</div>
+      <div>
+        <h3>Holds your documents and watches their dates</h3>
+        <p>Income certificate, caste certificate, domicile, marksheet, passbook, photo, signature —
+        stored once. The ones that expire are tracked, and Kagaz tells you which to renew
+        <em>before</em> a deadline turns it into a problem.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="num">2</div>
+      <div>
+        <h3>Prepares your submission for a specific form</h3>
+        <p>Give it the form. It reads what that form requires, then produces a sheet of your details
+        laid out to copy into each field, and your documents converted to exactly what that form
+        asks for — resized to its pixel and KB limits, JPG turned into PDF where that's what's
+        wanted. Download the whole folder.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="num">3</div>
+      <div>
+        <h3>Tells you what would get it rejected</h3>
+        <p>Your name spelled differently across two documents, a date of birth that doesn't match, a
+        certificate that expires before the deadline, a family income above that form's stated
+        limit. And the things no tool can check — like whether your bank account is NPCI-seeded —
+        listed plainly so you check them yourself instead of assuming they passed.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-title">
+    <h2>Give Kagaz the form — four ways</h2>
+    <p>However you found it, Kagaz reads it. Nothing typed in by hand.</p>
+  </div>
+  <div class="methods">
+    <a class="method" href="/app/new">
+      <div class="ico">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+        </svg>
+      </div>
+      <div class="t">Paste a link</div>
+      <div class="d">The form's webpage or PDF URL. Kagaz reads that one page.</div>
+    </a>
+    <a class="method" href="/app/new">
+      <div class="ico">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="1.5"/>
+          <path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/>
+        </svg>
+      </div>
+      <div class="t">Upload a screenshot</div>
+      <div class="d">A phone photo or screenshot of the notice or portal page.</div>
+    </a>
+    <a class="method" href="/app/new">
+      <div class="ico">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v5h6"/>
+          <path d="M16 13H8M16 17H8"/>
+        </svg>
+      </div>
+      <div class="t">Upload the PDF</div>
+      <div class="d">The official notification, straight from the department's site.</div>
+    </a>
+    <a class="method" href="/app/new">
+      <div class="ico">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+          <rect x="8" y="2" width="8" height="4" rx="1"/><path d="M12 11h4M12 15h4M8 11h.01M8 15h.01"/>
+        </svg>
+      </div>
+      <div class="t">Paste the text</div>
+      <div class="d">Copy the eligibility and document rules out of any page.</div>
+    </a>
+  </div>
+  <p class="tiny" style="text-align:center; margin-top:14px">Every rule comes from the form you give
+  it — document list, size and format limits, deadline, income ceiling. Nothing is assumed from any
+  other scheme.</p>
+</section>
+
+<section class="section">
+  <div class="section-title">
+    <h2>What lands in your download</h2>
+  </div>
+  <div class="grid grid-2">
+    <div class="feature">
+      <div class="ico">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+          <rect x="8" y="2" width="8" height="4" rx="1"/><path d="M9 14h6M9 18h6"/>
+        </svg>
+      </div>
+      <h3>A sheet of details to copy in</h3>
+      <p>Every field that form asks for, next to the value read off your own documents — so you copy
+      instead of re-typing, and the spelling matches what you uploaded. Fields Kagaz can't source
+      are left blank rather than guessed.</p>
+    </div>
+    <div class="feature">
+      <div class="ico">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/>
+        </svg>
+      </div>
+      <h3>Documents in the right size and format</h3>
+      <p>Resized to the pixel dimensions and KB limit that form states, and converted between
+      formats where it asks for one you don't have — a JPG scan turned into the PDF it wants. Your
+      originals in the locker are never altered.</p>
+    </div>
+    <div class="feature">
+      <div class="ico">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1Z"/>
+          <path d="m9 12 2 2 4-4"/>
+        </svg>
+      </div>
+      <h3>A rejection checklist, split honestly</h3>
+      <p>What Kagaz checked and found — name and date-of-birth mismatches across documents, expiry
+      against the deadline, income against that form's limit — kept separate from what it cannot
+      check, so nothing unverified is dressed up as verified.</p>
+    </div>
+    <div class="feature">
+      <div class="ico">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/>
+          <path d="m16 11 2 2 4-4"/>
+        </svg>
+      </div>
+      <h3>An audit report, and your decisions on it</h3>
+      <p>When something is genuinely ambiguous, Kagaz stops and asks you — one finding at a time —
+      and records what you decided and why. It never edits a value on your behalf, and it never
+      submits anything to any portal.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section" style="text-align:center">
+  <div class="card" style="padding:34px 26px">
+    <h2 style="font-size:21px">Start with one form</h2>
+    <p class="lede" style="margin:0 auto 20px">Free. Your documents stay in your own account, and
+    Kagaz hands the finished folder back to you — you press submit on the portal yourself.</p>
+    <div class="btnrow" style="justify-content:center">
+      <a href="/signup" class="btn btn-primary btn-lg">Create your free locker</a>
+      <a href="/demo" class="btn btn-lg">See the demo first</a>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block footer %}
+<footer class="foot">
+  Kagaz — कागज़, "paper". Advisory only: it never submits anything to any portal.
+</footer>
+{% endblock %}

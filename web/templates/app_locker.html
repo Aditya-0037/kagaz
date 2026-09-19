@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}My locker — Kagaz{% endblock %}
+{% block notice %}
+<div class="notice notice-account">Your account — real documents, processed live, stored under your login</div>
+{% endblock %}
+{% block crumb %}<div class="crumb"><a href="/app">Dashboard</a> / My locker</div>{% endblock %}
+{% block heading %}My locker{% endblock %}
+{% block lede %}<p class="lede">Store each document once and reuse it across every application. Add an expiry
+  date to certificates and Kagaz will warn you here before they lapse.</p>{% endblock %}
+
+{% block content %}
+
+{% if error %}<div class="alert error">{{ error }}</div>{% endif %}
+
+<div class="card">
+  <div class="card-row" style="margin-bottom:8px">
+    <h2 style="margin:0">Your documents</h2>
+    <span class="pill pill-muted">{{ documents | length }} stored</span>
+  </div>
+  {% if documents %}
+  <table class="plain">
+    <tr><th>Type</th><th>Label</th><th>File</th><th>Expiry</th><th></th></tr>
+    {% for d in documents %}
+    <tr>
+      <td><strong>{{ doc_type_labels.get(d.doc_type, d.doc_type) }}</strong></td>
+      <td class="muted">{{ d.label }}</td>
+      <td class="tiny">{{ d.filename }}</td>
+      <td>
+        {% set s = expiry_status(d.expiry_date) %}
+        {% if s == "expired" %}<span class="pill pill-danger">Expired {{ d.expiry_date }}</span>
+        {% elif s == "soon" %}<span class="pill pill-warn">Expires {{ d.expiry_date }}</span>
+        {% elif s == "ok" %}<span class="pill pill-ok">Valid to {{ d.expiry_date }}</span>
+        {% else %}<span class="pill pill-muted">No expiry</span>{% endif %}
+        {% set note = renewal_note(d.expiry_date) %}
+        {% if note %}<div class="tiny" style="margin-top:4px; color:var(--warn)">{{ note }}</div>{% endif %}
+      </td>
+      <td style="text-align:right">
+        <form method="post" action="/app/documents/{{ d.id }}/delete" onsubmit="return confirm('Remove this document from your locker?');">
+          <button type="submit" class="btn btn-sm">Delete</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <div class="empty-state">
+    <span class="ico">🗂️</span>
+    Your locker is empty — add your first document below.
+  </div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Add a document</h2>
+  <form method="post" action="/app/documents" enctype="multipart/form-data">
+    <div class="grid grid-2" style="gap:0 18px">
+      <div>
+        <label for="doc_type">Document type</label>
+        <select name="doc_type" id="doc_type" required>
+          {% for dt in doc_types %}
+          <option value="{{ dt }}">{{ doc_type_labels.get(dt, dt) }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="label">Label <span class="opt">(optional)</span></label>
+        <input type="text" name="label" id="label" placeholder="e.g. 2026 income certificate">
+      </div>
+      <div>
+        <label for="file">File <span class="opt">— JPG, PNG or PDF</span></label>
+        <input type="file" name="file" id="file" accept=".jpg,.jpeg,.png,.webp,.bmp,.tif,.tiff,.pdf" required>
+      </div>
+      <div>
+        <label for="expiry_date">Expiry date <span class="opt">(certificates only)</span></label>
+        <input type="date" name="expiry_date" id="expiry_date">
+      </div>
+    </div>
+    <div class="btnrow" style="margin-top:22px">
+      <button type="submit" class="btn-primary">Add to locker</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

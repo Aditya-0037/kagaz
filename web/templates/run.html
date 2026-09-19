@@ -1,5 +1,13 @@
 {% extends "base.html" %}
-{% block heading %} — {{ state.student_id.replace("_", " ") | title }}{% endblock %}
+{% block title %}{{ state.student_id.replace("_", " ") | title }} — Kagaz demo{% endblock %}
+{% block notice %}
+<div class="notice notice-demo">Synthetic demo data — fictional students, generated documents, no real people</div>
+{% if kagaz_llm_mode() == "replay" %}
+<div class="notice notice-replay">Replay mode: every model response below is a recorded fixture — instant, free, fully reproducible</div>
+{% endif %}
+{% endblock %}
+{% block crumb %}<div class="crumb"><a href="/demo">Demo</a> / Audit run</div>{% endblock %}
+{% block heading %}{{ state.student_id.replace("_", " ") | title }}{% endblock %}
 
 {% block head %}
 {% if state.status in ("running", "awaiting_decision") %}
@@ -52,9 +60,9 @@
 {% elif state.status == "complete" %}
   <div class="card">
     <div class="stats">
-      <div><strong>{{ state.result.token_usage.get("totalTokens", 0) }}</strong><span class="muted">tokens</span></div>
-      <div><strong>{{ "%.2f"|format(state.result.duration_seconds) }}s</strong><span class="muted">wall clock</span></div>
-      <div><strong>{{ state.result.findings | length }}</strong><span class="muted">finding(s)</span></div>
+      <div class="stat"><span class="n">{{ state.result.token_usage.get("totalTokens", 0) }}</span><span class="l">tokens</span></div>
+      <div class="stat"><span class="n">{{ "%.2f"|format(state.result.duration_seconds) }}s</span><span class="l">wall clock</span></div>
+      <div class="stat"><span class="n">{{ state.result.findings | length }}</span><span class="l">finding(s)</span></div>
     </div>
     <p style="margin-top:16px"><a class="btn btn-primary" href="/run/{{ state.run_id }}/download">Download folder</a></p>
   </div>
