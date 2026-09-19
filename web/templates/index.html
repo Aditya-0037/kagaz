@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block heading %} — pre-submission audit{% endblock %}
+{% block content %}
+<div class="card">
+  <p class="muted">Pick a student and a scheme. Kagaz extracts the scheme's real
+  requirements, verifies the student's documents against them, and flags
+  anything a human should look at before submission — it never submits
+  anything itself.</p>
+  <form method="post" action="/run">
+    <label for="student_id">Student</label>
+    <select name="student_id" id="student_id">
+      {% for s in students %}
+      <option value="{{ s.student_id }}">{{ s.canonical_name }} — {{ s.scenario }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="scheme_id">Scheme</label>
+    <select name="scheme_id" id="scheme_id">
+      {% for scheme_id, name in schemes.items() %}
+      <option value="{{ scheme_id }}">{{ name }}</option>
+      {% endfor %}
+    </select>
+
+    <p style="margin-top:20px"><button type="submit" class="btn-primary">Run audit</button></p>
+  </form>
+</div>
+{% endblock %}

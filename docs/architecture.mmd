@@ -1,0 +1,62 @@
+flowchart TB
+    subgraph INPUT["Input tiers"]
+        direction LR
+        PDF["Scheme PDF<br/>(pdfplumber)"]
+        TEXT["Pasted text"]
+        MANUAL["Manual dict"]:::det
+    end
+
+    subgraph EXTRACT["Requirement Extractor — 4 decomposed calls"]
+        direction LR
+        C1["checklist"]:::llm
+        C2["fields"]:::llm
+        C3["format specs"]:::llm
+        C4["deadline"]:::llm
+    end
+
+    MERGE["merge → Requirement"]:::det
+    DEADLINE["apply_deadline()"]:::det
+
+    PDF --> EXTRACT
+    TEXT --> EXTRACT
+    C1 & C2 & C3 & C4 --> MERGE
+    MANUAL -.->|"skips extraction entirely"| DEADLINE
+    MERGE --> DEADLINE
+
+    subgraph VERIFY["Verifier fan-out — parallel, dispatch is deterministic Python"]
+        direction LR
+        OCR["OCR (rapidocr)"]:::det
+        V1["5 certificate-style<br/>verifier agents"]:::llm
+        IMG["photo / signature<br/>image_checks"]:::det
+        OCR --> V1
+    end
+    DEADLINE --> VERIFY
+
+    CROSS["cross_checker<br/>name / DOB / validity rules<br/>zero LLM calls"]:::det
+    VERIFY --> CROSS
+
+    ESCALATE["escalation interrupt<br/>real Strands interrupt,<br/>one Finding at a time"]:::human
+    CROSS -->|"Finding.needs_human"| ESCALATE
+    CROSS --> PACKAGE
+    ESCALATE --> PACKAGE
+
+    PACKAGE["packager<br/>documents/ · values.csv ·<br/>audit_report.pdf · checklist.md"]:::det
+
+    subgraph WATCHER["Expiry watcher — separate track, its own schedule"]
+        direction LR
+        SCAN["scan valid_until"]:::det
+        DIGEST["render one digest"]:::det
+        EMAIL["send: file / SES"]:::det
+        SCAN --> DIGEST --> EMAIL
+    end
+
+    subgraph LEGEND["Legend"]
+        direction LR
+        L1["LLM call"]:::llm
+        L2["deterministic Python"]:::det
+        L3["human-in-the-loop"]:::human
+    end
+
+    classDef llm fill:#ede9fe,stroke:#7c3aed,color:#3b0764,stroke-width:2px
+    classDef det fill:#dcfce7,stroke:#15803d,color:#052e16,stroke-width:2px
+    classDef human fill:#fee2e2,stroke:#b91c1c,color:#450a0a,stroke-width:2px

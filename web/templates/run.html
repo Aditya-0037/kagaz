@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block heading %} — {{ state.student_id.replace("_", " ") | title }}{% endblock %}
+
+{% block head %}
+{% if state.status in ("running", "awaiting_decision") %}
+<meta http-equiv="refresh" content="1.5">
+{% endif %}
+{% endblock %}
+
+{% block content %}
+
+{% if state.status == "running" %}
+  <div class="card">
+    <p><strong>Running the audit…</strong></p>
+    <p class="muted">Extracting the scheme's requirements, verifying documents, cross-checking.
+    This page refreshes automatically.</p>
+  </div>
+
+{% elif state.status == "awaiting_decision" %}
+  <div class="card escalation">
+    <h2>Human review needed</h2>
+    <p class="muted">Kagaz paused here — this is one flagged finding, waiting on you.
+    Nothing else runs until you decide.</p>
+    <p style="margin:14px 0 6px">
+      <strong style="text-transform:uppercase;color:#b91c1c">{{ state.pending_finding.severity }}</strong>
+      &nbsp;·&nbsp; {{ state.pending_finding.category.replace("_", " ") }}
+    </p>
+    <p>{{ state.pending_finding.message }}</p>
+    <p class="muted" style="margin-top:10px">Evidence:</p>
+    <ul style="margin-top:4px">
+      {% for ev in state.pending_finding.evidence %}
+      <li class="evidence">{{ ev }}</li>
+      {% endfor %}
+    </ul>
+    <form method="post" action="/run/{{ state.run_id }}/decide">
+      <label for="note">Note (optional) — why you decided this</label>
+      <input type="text" name="note" id="note" placeholder="e.g. confirmed with the student directly">
+      <p style="margin-top:18px; display:flex; gap:10px">
+        <button type="submit" name="decision" value="accept" class="btn">Accept</button>
+        <button type="submit" name="decision" value="override" class="btn-danger">Override</button>
+        <button type="submit" name="decision" value="defer" class="btn-warn">Defer</button>
+      </p>
+    </form>
+  </div>
+
+{% elif state.status == "error" %}
+  <div class="card severity-blocker">
+    <h2>Something went wrong</h2>
+    <p>{{ state.error }}</p>
+  </div>
+
+{% elif state.status == "complete" %}
+  <div class="card">
+    <div class="stats">
+      <div><strong>{{ state.result.token_usage.get("totalTokens", 0) }}</strong><span class="muted">tokens</span></div>
+      <div><strong>{{ "%.2f"|format(state.result.duration_seconds) }}s</strong><span class="muted">wall clock</span></div>
+      <div><strong>{{ state.result.findings | length }}</strong><span class="muted">finding(s)</span></div>
+    </div>
+    <p style="margin-top:16px"><a class="btn btn-primary" href="/run/{{ state.run_id }}/download">Download folder</a></p>
+  </div>
+
+  {% if not state.result.findings %}
+  <div class="card severity-likely_fine"><p>No findings — every document checked out.</p></div>
+  {% endif %}
+
+  {% for severity in ["blocker", "worth_knowing", "likely_fine"] %}
+    {% set matching = state.result.findings | selectattr("severity", "equalto", severity) | list %}
+    {% if matching %}
+    <div class="card severity-{{ severity }}">
+      <h3>{{ severity.replace("_", " ") }}</h3>
+      {% for f in matching %}
+      <div class="finding">
+        <p><strong>{{ f.category.replace("_", " ") }}</strong>: {{ f.message }}</p>
+        <ul>{% for ev in f.evidence %}<li class="evidence">{{ ev }}</li>{% endfor %}</ul>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  {% endfor %}
+
+  {% if state.result.decision_log %}
+  <div class="card">
+    <h3>decision log</h3>
+    {% for d in state.result.decision_log %}
+    <p class="muted">{{ d.decided_at.strftime("%Y-%m-%d %H:%M:%S") }} —
+      <strong>{{ d.decision }}</strong> on "{{ d.finding.message }}"
+      {% if d.note %}({{ d.note }}){% endif %}
+    </p>
+    {% endfor %}
+  </div>
+  {% endif %}
+{% endif %}
+
+{% endblock %}

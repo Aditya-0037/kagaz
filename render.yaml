@@ -1,0 +1,30 @@
+# Render blueprint (https://render.com/docs/blueprint-spec) for the Kagaz
+# web UI. Deployment itself was deliberately not run from this session —
+# it needs a GitHub remote and a Render account, neither of which exist
+# here. To deploy:
+#   1. Push this repo to a GitHub repo you control.
+#   2. In the Render dashboard: New -> Blueprint -> connect that repo.
+#      Render reads this file and creates the service below.
+#   3. Once credentials for Vertex AI exist for the deploy target, follow
+#      docs/vertex-setup.md, add GOOGLE_CLOUD_PROJECT/GOOGLE_CLOUD_LOCATION
+#      below and however this deploy's credentials reach Render (a service
+#      account with workload identity, not a committed key), and flip
+#      KAGAZ_LLM_MODE to live to move off replay-mode fixtures.
+services:
+  - type: web
+    name: kagaz
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.10
+      - key: KAGAZ_LLM_MODE
+        value: replay
+      - key: KAGAZ_MODEL_PROVIDER
+        value: vertex
+      - key: KAGAZ_OCR_BACKEND
+        value: vision
+      - key: KAGAZ_EMAIL_BACKEND
+        value: file

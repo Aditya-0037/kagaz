@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kagaz{% block title %}{% endblock %}</title>
+  {% block head %}{% endblock %}
+  <style>
+    :root { color-scheme: light; }
+    body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; max-width: 780px; margin: 0 auto;
+           padding: 24px 20px 60px; background: #fafafa; color: #1a1a1a; }
+    a { color: #1d4ed8; }
+    .banner { background: #7c2d12; color: #fff; padding: 9px 16px; text-align: center; font-weight: 600;
+               font-size: 13px; letter-spacing: .03em; border-radius: 6px; margin-bottom: 8px; }
+    .banner-replay { background: #1e3a8a; color: #fff; padding: 7px 16px; text-align: center; font-weight: 500;
+               font-size: 12px; border-radius: 6px; margin-bottom: 22px; }
+    .banner-account { background: #14532d; color: #fff; padding: 9px 16px; text-align: center; font-weight: 600;
+               font-size: 13px; letter-spacing: .03em; border-radius: 6px; margin-bottom: 8px; }
+    .error { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; padding: 10px 14px;
+             border-radius: 6px; font-size: 13px; margin-bottom: 14px; }
+    h1 { font-size: 22px; margin-bottom: 4px; }
+    h1 a { color: inherit; text-decoration: none; }
+    h2 { font-size: 17px; margin: 0 0 10px; }
+    h3 { font-size: 15px; margin: 0 0 8px; text-transform: capitalize; }
+    .card { background: #fff; border: 1px solid #e2e2e2; border-radius: 10px; padding: 18px 20px; margin-bottom: 14px; }
+    .severity-blocker { border-left: 5px solid #b91c1c; }
+    .severity-worth_knowing { border-left: 5px solid #b45309; }
+    .severity-likely_fine { border-left: 5px solid #15803d; }
+    .escalation { border: 2px solid #b91c1c; box-shadow: 0 0 0 4px rgba(185,28,28,.08); }
+    .finding { margin-bottom: 12px; }
+    .finding:last-child { margin-bottom: 0; }
+    .evidence { color: #555; font-size: 13px; margin: 3px 0 0 18px; }
+    .muted { color: #777; font-size: 13px; }
+    button, .btn { font-size: 15px; padding: 10px 18px; border-radius: 6px; border: 1px solid #ccc;
+                   background: #f5f5f5; cursor: pointer; text-decoration: none; color: #1a1a1a; display: inline-block; }
+    .btn-primary { background: #1d4ed8; color: #fff; border-color: #1d4ed8; }
+    .btn-danger { background: #b91c1c; color: #fff; border-color: #b91c1c; }
+    .btn-warn { background: #b45309; color: #fff; border-color: #b45309; }
+    select, input[type=text] { font-size: 15px; padding: 8px; border-radius: 6px; border: 1px solid #ccc; width: 100%;
+                                box-sizing: border-box; }
+    label { display: block; margin: 14px 0 4px; font-weight: 600; font-size: 13px; }
+    .stats { display: flex; gap: 22px; }
+    .stats strong { font-size: 20px; display: block; }
+  </style>
+</head>
+<body>
+  {% block banner %}
+  <div class="banner">SYNTHETIC DEMO DATA — no real students, no real documents</div>
+  {% endblock %}
+  {% if kagaz_llm_mode() == "replay" %}
+  <div class="banner-replay">Running in replay mode: every model response below is a recorded fixture, not a live call — instant, free, fully reproducible.</div>
+  {% endif %}
+  <h1><a href="/">Kagaz</a>{% block heading %}{% endblock %}</h1>
+  {% block content %}{% endblock %}
+</body>
+</html>
