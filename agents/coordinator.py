@@ -42,6 +42,7 @@ from tools.doc_types import EXPIRING_DOC_TYPES
 from tools.image_checks import IMAGE_CHECKS
 from tools.ocr import DEFAULT_CACHE_DIR as OCR_CACHE_DIR
 from tools.ocr import extract_text
+from tools.retry import is_transient
 
 STUDENTS_DIR = Path(__file__).parent.parent / "fixtures" / "students"
 
@@ -50,6 +51,11 @@ STUDENTS_DIR = Path(__file__).parent.parent / "fixtures" / "students"
 # runs get this scratch directory instead (outbox/ is gitignored), and it
 # is wiped per run by api/real_run_state.py.
 REAL_OCR_CACHE_DIR = Path(__file__).parent.parent / "outbox" / "real_scratch" / "ocr_cache"
+
+# Documents are verified in parallel, but not unboundedly: each one is a
+# model call, and a whole checklist firing at once exhausts the Vertex
+# per-minute quota (observed as 429 RESOURCE_EXHAUSTED in production).
+MAX_PARALLEL_VERIFICATIONS = 3
 
 
 def apply_deadline(requirement: Requirement) -> Requirement:
@@ -137,7 +143,10 @@ def run_audit_for_documents(
 
     unreadable: list[Finding] = []
     to_verify = [required for required in requirement.required_documents if required.doc_type in documents]
-    with ThreadPoolExecutor(max_workers=max(1, len(to_verify))) as executor:
+    # Capped rather than one thread per document: seven documents firing
+    # seven Gemini calls at once trips the project's per-minute quota,
+    # and the parallelism buys little once the calls queue anyway.
+    with ThreadPoolExecutor(max_workers=max(1, min(MAX_PARALLEL_VERIFICATIONS, len(to_verify)))) as executor:
         futures = {
             executor.submit(
                 _verify_one, documents[required.doc_type], required, subject_id, llm_mode, ocr_cache_dir
@@ -149,21 +158,37 @@ def run_audit_for_documents(
             try:
                 document, usage = future.result()
             except Exception as exc:  # noqa: BLE001 - one bad file must not kill the whole run
-                # A corrupt scan, a password-protected PDF, a file that
-                # isn't really a document — report it against that one
-                # document and keep auditing the rest.
-                unreadable.append(
-                    Finding(
-                        severity="blocker",
-                        category="format",
-                        message=f"Kagaz could not read the file provided for {required.doc_type.replace('_', ' ')}.",
-                        evidence=[
-                            f"{documents[required.doc_type].name}: {exc}",
-                            "Upload a clear image (JPG/PNG) or a text-based PDF and run this again.",
-                        ],
-                        needs_human=True,
+                doc_label = required.doc_type.replace("_", " ")
+                if is_transient(exc):
+                    # A rate limit or a provider blip is Kagaz's problem,
+                    # not a defect in the user's document. Saying "could
+                    # not read your file" here would send someone off to
+                    # re-scan a perfectly good certificate.
+                    unreadable.append(
+                        Finding(
+                            severity="worth_knowing",
+                            category="format",
+                            message=f"Kagaz couldn't check your {doc_label} — the document service was busy, not a problem with your file.",
+                            evidence=[f"Provider returned: {exc}"],
+                            suggested_action="Run this application again in a minute; the document itself looks fine.",
+                        )
                     )
-                )
+                else:
+                    # A corrupt scan, a password-protected PDF, a file
+                    # that isn't really a document — report it against
+                    # that one document and keep auditing the rest.
+                    unreadable.append(
+                        Finding(
+                            severity="blocker",
+                            category="format",
+                            message=f"Kagaz could not read the file provided for {doc_label}.",
+                            evidence=[
+                                f"{documents[required.doc_type].name}: {exc}",
+                                "Upload a clear image (JPG/PNG) or a text-based PDF and run this again.",
+                            ],
+                            needs_human=True,
+                        )
+                    )
                 continue
             extracted.append(document)
             for key, value in usage.items():

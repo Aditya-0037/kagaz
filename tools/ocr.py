@@ -100,6 +100,7 @@ def _run_vision(path: Path, llm_mode: str | None = None) -> str:
 
     from llm_cache import cached_call
     from model_provider import get_model, get_model_identifier
+    from tools.retry import with_retries
 
     provider = os.environ.get("KAGAZ_MODEL_PROVIDER", "vertex")
     model_name = get_model_identifier(provider)
@@ -123,7 +124,12 @@ def _run_vision(path: Path, llm_mode: str | None = None) -> str:
         return {"text": str(result)}
 
     inputs = {"image_sha256": hashlib.sha256(image_bytes).hexdigest()}
-    response = cached_call(provider, model_name, _VISION_PROMPT, inputs, call_fn, mode=llm_mode)
+    # Several documents are verified in parallel, so a run can trip the
+    # provider's per-minute quota. Back off and retry rather than
+    # reporting the user's document as unreadable.
+    response = cached_call(
+        provider, model_name, _VISION_PROMPT, inputs, lambda: with_retries(call_fn), mode=llm_mode
+    )
     return response["text"]
 
 

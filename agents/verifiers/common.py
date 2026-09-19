@@ -30,6 +30,7 @@ from contracts import ExtractedDocument
 from llm_cache import cached_call
 from model_provider import get_model, get_model_identifier
 from tools.dates import parse_date_flexible
+from tools.retry import is_transient, with_retries
 
 
 class VerifierOutput(BaseModel):
@@ -74,21 +75,28 @@ def run_verifier(
     provider = os.environ.get("KAGAZ_MODEL_PROVIDER", "vertex")
     model_name = get_model_identifier(provider)
 
+    def once():
+        agent = Agent(model=get_model(provider))
+        result = agent(prompt, structured_output_model=VerifierOutput)
+        usage = dict(getattr(result.metrics, "accumulated_usage", None) or {})
+        return {"output": result.structured_output.model_dump(mode="json"), "usage": usage}
+
     def call_fn():
+        # Two different failure modes, two different retry strategies.
         # A small local model occasionally fumbles the structured-output
-        # tool call (emits malformed/duplicated JSON) — retry a couple of
-        # times before giving up. Only runs in record/live mode; replay
+        # tool call (malformed/duplicated JSON) — retry immediately.
+        # A 429 from a per-minute quota needs backoff instead, which
+        # with_retries handles. Only runs in record/live mode; replay
         # never calls this at all, so this never touches the network in
         # tests/CI.
         last_error: Exception | None = None
         for _attempt in range(3):
             try:
-                agent = Agent(model=get_model(provider))
-                result = agent(prompt, structured_output_model=VerifierOutput)
-                usage = dict(getattr(result.metrics, "accumulated_usage", None) or {})
-                return {"output": result.structured_output.model_dump(mode="json"), "usage": usage}
+                return with_retries(once)
             except Exception as exc:  # noqa: BLE001 - genuinely provider/parse-agnostic retry
                 last_error = exc
+                if is_transient(exc):
+                    break  # with_retries already backed off and gave up
         raise last_error
 
     response = cached_call(provider, model_name, prompt, cache_inputs, call_fn, mode=llm_mode)
