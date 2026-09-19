@@ -1,8 +1,15 @@
 # Kagaz (कागज़ — "paper")
 
-**A pre-submission audit agent for Indian student scheme paperwork.** Give
-it a scheme notification and a student's documents; it tells you exactly
-what will get the application rejected — before a portal does.
+**A document locker and form assistant for Indian scheme paperwork.** Keep
+your certificates in one place, get told when they're about to expire,
+and — for any form you point it at — get the details to copy in, your
+documents converted to that form's required sizes and formats, and a
+checklist of what would actually get the application rejected.
+
+**▶ Live: https://kagaz-529885327265.us-central1.run.app**
+([try the demo](https://kagaz-529885327265.us-central1.run.app/demo) — no
+signup needed, or create a locker to run it on your own documents).
+Running on Google Cloud Run with Vertex AI, Firestore, and Cloud Storage.
 
 Built for **[Hack Devengers 2.0](https://unstop.com/hackathons/hack-devengers-20-devengers-1749441)**
 — a 24-hour, fully virtual Open Innovation hackathon on Unstop (19–20
@@ -11,33 +18,48 @@ problem statement or tech stack. Built on the Strands Agents SDK;
 originally started on AWS Bedrock, since migrated to Google Cloud Vertex
 AI — see [`docs/vertex-setup.md`](docs/vertex-setup.md).
 
-## The problem, in three sentences
+## What it does
 
-A school or coaching centre's office handles scheme applications for
-hundreds of students, and most rejections aren't about merit — a certificate
-that expired eleven days before the deadline, a photo two kilobytes over
-the portal's cap, a date of birth entered as `05/06/2007` on one document
-and `06/05/2007` on another. Nobody catches these on a skim: they look
-fine, they aren't, and the office finds out only when the rejection
-letter arrives and the window has already closed. Kagaz reads the scheme
-notification itself, checks a student's documents against what it
-actually requires, and surfaces exactly this class of silent, technicality
-rejection before submission — while never submitting anything itself.
+**1. Holds your documents and watches their dates.** Income certificate,
+caste certificate, domicile, marksheet, passbook, photo, signature —
+stored once, reused for every form. The ones that expire are tracked, and
+Kagaz tells you which to renew *before* a deadline turns it into a
+problem, because a reissue takes weeks.
+
+**2. Prepares your submission for a specific form.** Give it the form —
+a link, a screenshot, the PDF, or pasted text. It reads what *that* form
+requires and produces a sheet of your details laid out to copy into each
+field, plus your documents converted to exactly what it asks for: resized
+to its pixel and KB limits, JPG turned into PDF where that's what's
+wanted. Download the whole folder.
+
+**3. Tells you what would get it rejected.** Your name spelled
+differently across two documents, a date of birth that doesn't match, a
+certificate that expires before the deadline, a family income above that
+form's stated ceiling. And — kept deliberately separate — the things no
+tool can check, like whether your bank account is NPCI-seeded, listed
+plainly so you check them yourself instead of assuming they passed.
+
+Every rule comes from the form you give it: document list, size and format
+limits, deadline, income ceiling. Nothing is hardcoded to one scheme, and
+no figure is carried over from another.
 
 ## Who it's for
 
-Office staff at a school, college, or coaching centre who process scheme
-applications in bulk and don't have time to re-derive each scheme's format
-rules by hand for every student.
+Students and applicants filing their own scheme applications, and the
+office staff at schools, colleges, and coaching centres who process them
+in bulk and don't have time to re-derive each form's rules by hand.
 
 ## See it work
 
-<table>
-<tr><td width="33%"><img src="docs/screenshots/index.png" alt="Pick a student and scheme"></td>
-<td width="33%"><img src="docs/screenshots/escalation-screen.png" alt="Escalation screen"></td>
-<td width="33%"><img src="docs/screenshots/results.png" alt="Results with findings and decision log"></td></tr>
-<tr><td>Pick a student and scheme</td><td><b>The escalation screen</b> — Kagaz genuinely pauses here, waiting on a human</td><td>Findings by severity, decision log, token count and wall-clock time</td></tr>
-</table>
+|  |  |
+| --- | --- |
+| ![Landing](docs/screenshots/landing.png) | ![Locker](docs/screenshots/locker.png) |
+| The product, in three tasks | **The locker** — documents stored once, expiry tracked, renewal prompted |
+| ![Scheme input](docs/screenshots/scheme-input.png) | ![Match](docs/screenshots/match.png) |
+| **Four ways to give it a form** — link, screenshot, PDF, pasted text | **What that form requires**, read live, including the income ceiling |
+| ![Escalation](docs/screenshots/escalation-income.png) | ![Results](docs/screenshots/results-real.png) |
+| **A real pause for a human** — here, family income over the form's limit | **Findings split honestly** into verified vs. check-yourself |
 
 ## Quickstart
 
@@ -60,9 +82,10 @@ pytest                            # 185 tests, replay mode, zero network/credent
 uvicorn api.main:app --reload
 ```
 
-Open http://127.0.0.1:8000, pick a student and scheme, and run the audit.
-For a student with a flagged finding, the escalation screen will pause the
-run until you accept, override, or defer it.
+Open http://127.0.0.1:8000. That's the product landing page; the synthetic
+demo is at `/demo` — pick a student and a scheme and run the audit. For a
+student with a flagged finding, the escalation screen will pause the run
+until you accept, override, or defer it.
 
 Every fixture (synthetic students, scheme PDFs, recorded model responses)
 is checked into the repo, so `pytest` and the web UI both work immediately
@@ -70,29 +93,32 @@ after a clean clone — no API key, no Ollama install, no network required.
 
 ## Two flows, clearly separated
 
-- **`/` — the synthetic demo.** Three fictional students, two real scheme
-  PDFs, replay-mode by default. This is what the Quickstart above runs —
-  no credentials needed.
-- **`/signup`, `/login`, `/app` — real accounts.** Create an account,
-  Kagaz processes real documents live (never cached, never replayed) and
-  stores your runs under your login in Firestore/Cloud Storage. Needs
-  Google Cloud credentials configured (`docs/vertex-setup.md` §8) — every
-  page in this flow carries its own "YOUR ACCOUNT" banner, distinct from
-  the demo's "SYNTHETIC DEMO DATA" one, so the two are never confused.
-  Uploading your own scheme documents and running a full audit through
-  this flow is still in progress — signup/login/dashboard work today;
-  scheme-input (paste/PDF/screenshot/URL) and document upload are next.
+- **`/demo` — the synthetic demo.** Three fictional students, two real
+  scheme PDFs, replay-mode by default. This is what the Quickstart above
+  runs — no credentials needed.
+- **`/signup`, `/login`, `/app` — real accounts.** Your own **digital
+  locker**: upload each document once (JPG/PNG/PDF, with an expiry date if
+  it has one) and reuse it across applications. Start an application by
+  **pasting a link, uploading a screenshot, uploading the PDF, or pasting
+  the text** — all four feed the same requirement extractor. Kagaz then
+  matches your locker documents to what the scheme requires, runs the
+  audit live (never cached, never replayed), pauses on anything ambiguous,
+  and hands back a submission-ready folder. Runs and documents persist in
+  Firestore/Cloud Storage under your login. Needs Google Cloud credentials
+  (`docs/vertex-setup.md` §8). Every page here carries a green "your
+  account" strip, distinct from the demo's amber one, so the two are never
+  confused.
 
 ## The deterministic-core argument
 
-Kagaz uses an LLM for exactly two things: reading a scheme notification's
-prose to figure out what it requires, and reading OCR'd document text to
-extract fields. Everything downstream of that — comparing two names,
-comparing two dates of birth, checking a validity window against a
-deadline, resizing a photo to spec, packaging the output folder — is
-tested, deterministic Python with zero LLM calls
-(`tools/name_match.py`, `tools/dates.py`, `agents/cross_checker.py`,
-`tools/formatting.py`, `tools/packager.py`). An LLM asked "are these the
+Kagaz uses an LLM for exactly two things: reading a form's prose to figure
+out what it requires, and reading document text to extract fields.
+Everything downstream of that — comparing two names, comparing two dates
+of birth, checking a validity window against a deadline, comparing a
+family income against a form's ceiling, resizing a photo to spec,
+packaging the output folder — is tested, deterministic Python with zero
+LLM calls (`tools/name_match.py`, `tools/dates.py`, `tools/money.py`,
+`agents/cross_checker.py`, `tools/formatting.py`, `tools/packager.py`). An LLM asked "are these the
 same person" twice in a row can answer differently; that inconsistency is
 fine in a chat window and fatal in a system that has to be right the same
 way every time. The rule table behind this — when a name difference is
@@ -101,20 +127,23 @@ way every time. The rule table behind this — when a name difference is
 
 ## Safety boundaries
 
-- **The demo flow (`/`) is entirely synthetic.** Three fictional students,
-  generated documents, generated scheme notifications. No real Aadhaar
-  numbers, no real bank details, no real people. A `SYNTHETIC DEMO DATA`
-  banner is on every screen of that flow and every generated PDF.
+- **The demo flow (`/demo`) is entirely synthetic.** Three fictional
+  students, generated documents, generated scheme notifications. No real
+  Aadhaar numbers, no real bank details, no real people. An amber
+  "synthetic demo data" strip is on every screen of that flow and every
+  generated PDF.
 - **The real-account flow (`/app`) handles real user documents**, clearly
-  separated behind its own login and its own "YOUR ACCOUNT" banner — never
-  mixed into the demo's synthetic fixtures, never cached/replayed (forced
-  `live` model calls, see `docs/vertex-setup.md`).
+  separated behind its own login and its own green "your account" strip —
+  never mixed into the demo's synthetic fixtures, never cached or
+  replayed (forced `live` model calls, so nothing real is written to the
+  committed replay cache).
 - **Kagaz never submits anything to any portal, in either flow.** No
-  login automation, no outbound requests to government sites. Its output
-  is a downloadable folder; a human takes it from there and presses
-  submit. The one planned exception (not yet built — see "What's built")
-  is reading a *single* scheme URL a real user pastes in — a plain GET
-  with SSRF guards, never a login, never a crawl.
+  login automation, no form filling on your behalf, no outbound requests
+  to government sites beyond one thing: when you paste a form's URL it
+  does a *single* GET of that one page to read it — SSRF-guarded
+  (http/https only, private/loopback/link-local/metadata addresses
+  refused, no redirects followed, size-capped), never a login, never a
+  crawl. Its output is a downloadable folder; you press submit yourself.
 - **Nothing is auto-corrected.** Findings are advice with evidence
   attached, in three severity tiers (`likely_fine`, `worth_knowing`,
   `blocker`). Only a `blocker` triggers escalation — a genuine, real
@@ -190,11 +219,40 @@ ollama pull llama3.1:8b
 
 ## Deploying
 
-`render.yaml` is ready for a one-click Render Blueprint deploy (`KAGAZ_LLM_MODE=replay`,
-so the deployed instance runs entirely off committed fixtures — instant,
-free, and the web UI says so on every page). Deploying it is a manual step
-outside this repo (push to a GitHub remote you control, then connect that
-repo in Render's dashboard) rather than something run from here.
+The `Dockerfile` here is what the live deployment runs on **Google Cloud
+Run**, in the same project as Vertex AI / Firestore / Cloud Storage, so
+credentials come from the runtime service account via Application Default
+Credentials — no key file is ever built into the image:
+
+```bash
+gcloud run deploy kagaz --source . \
+  --project <your-project> --region us-central1 \
+  --allow-unauthenticated --memory 2Gi --cpu 2 \
+  --max-instances 1 --no-cpu-throttling \
+  --set-env-vars "KAGAZ_MODEL_PROVIDER=vertex,KAGAZ_LLM_MODE=replay,\
+KAGAZ_OCR_BACKEND=vision,KAGAZ_ENV=production,\
+GOOGLE_CLOUD_PROJECT=<your-project>,GOOGLE_CLOUD_LOCATION=us-central1,\
+KAGAZ_GCS_BUCKET=<your-bucket>,KAGAZ_SESSION_SECRET=<random-secret>"
+```
+
+The runtime service account needs `roles/aiplatform.user`,
+`roles/datastore.user`, and `roles/storage.objectAdmin`. Setup for the
+Firestore database, the GCS bucket, and the composite indexes is in
+[`docs/vertex-setup.md`](docs/vertex-setup.md) §8.
+
+Two deployment flags are load-bearing rather than cosmetic:
+`--max-instances 1` because live run state (the escalation pause) is held
+in memory in one process, and `--no-cpu-throttling` so the background
+audit thread keeps running between the status page's polls.
+
+`KAGAZ_LLM_MODE=replay` is correct even in production: it makes the
+synthetic demo serve from committed fixtures (instant and free), while
+the real-account flow forces `live` in code regardless, so real documents
+are never served from — or written to — the replay cache.
+
+`render.yaml` remains for a one-click Render Blueprint deploy of the demo
+flow only; Render has no access to this project's Vertex/Firestore
+credentials, so the real-account flow needs the Cloud Run path above.
 
 ## What's built
 
@@ -206,22 +264,48 @@ the escalation interrupt, the expiry watcher, the packager, and a FastAPI
 web UI. Provider migrated from AWS Bedrock to Google Cloud Vertex AI — see
 [`docs/vertex-setup.md`](docs/vertex-setup.md).
 
-**Real-account flow (in progress, built on top of the same deterministic
-core above):**
+**Real-account flow (built on top of the same deterministic core above):**
 - [x] Accounts — email/password signup, login, session, Firestore-backed
   (`auth.py`, `db.py`, `api/auth_routes.py`).
-- [x] Persistence infra — Firestore for user/run records, Cloud Storage for
-  uploaded documents and generated packages (`db.py`, `blob_storage.py`).
-- [ ] Multi-source scheme input — paste text, upload a scheme PDF or
-  screenshot, or paste a scheme URL (SSRF-guarded single GET) — all
-  feeding the same requirement extractor the demo flow uses.
-- [ ] Real document upload + a generalized coordinator that runs against
-  uploaded files instead of the demo's pre-seeded fixtures, always in
-  `live` model mode (never cached).
-- [ ] The verified / can't-verify checklist split: findings Kagaz actually
-  checked from your documents, versus a static list of common non-document
-  rejection causes (e.g. NPCI/bank-seeding status) that it explicitly
-  flags as outside what documents alone can confirm.
+- [x] Persistence — Firestore for user/run/document records, Cloud Storage
+  for uploaded files and generated packages (`db.py`, `blob_storage.py`).
+- [x] Digital locker — upload once, reuse across applications, with expiry
+  dates surfaced as an "expiring soon" view (`/app/documents`).
+- [x] Multi-source scheme input (`agents/scheme_input.py`) — paste text,
+  upload a PDF or screenshot, or paste a URL (SSRF-guarded single GET,
+  no redirects, no crawl) — all feeding the same requirement extractor.
+- [x] Real document runs — the coordinator takes an explicit
+  `documents: dict[str, Path]` (`run_audit_for_documents`), forced to
+  `live` model mode so real documents are never written to the replay
+  cache. PDFs are read via their text layer, images via OCR/vision.
+- [x] Eligibility checking (`tools/money.py`, `cross_checker.income_findings`)
+  — the form's own income ceiling is extracted from its text, parsed from
+  any of `Rs. 2,50,000` / `₹2.5 lakh` / `1 crore`, and compared against
+  the figure read off the income certificate. Over the limit is a blocker;
+  unreadable is flagged rather than silently passed; a form that states no
+  ceiling produces no finding and no invented figure.
+- [x] The verified / can't-verify checklist split: what Kagaz actually
+  checked from your documents, versus a curated list of common
+  non-document rejection causes (NPCI/bank seeding, portal downtime,
+  institution eligibility) it explicitly flags as outside what documents
+  alone can confirm.
+- [x] Renewal prompts — the locker says what to *do* about an expiring
+  document ("start the renewal now; these usually take a few weeks to
+  issue"), not just when it lapses.
+
+### Known limitations
+
+- Live run state (the escalation pause, the generated folder) is held in
+  memory in one process, so the deployment pins `--max-instances 1` and a
+  run's progress is lost if the instance restarts. The Firestore record of
+  the run survives; the downloadable folder does not.
+- `values.csv` can only fill fields the five verifiers actually extract
+  (name, father's name, DOB, account number, and so on). Everything else a
+  portal asks for — Aadhaar number, IFSC, course codes — is deliberately
+  left blank rather than guessed.
+- Eligibility rules other than the income ceiling are extracted and shown
+  to you, but not verified against documents; they're listed for you to
+  confirm.
 
 ## License
 
