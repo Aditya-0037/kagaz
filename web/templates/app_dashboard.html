@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %} — your applications{% endblock %}
+{% block banner %}
+<div class="banner-account">YOUR ACCOUNT — real documents, processed live, stored under your login</div>
+{% endblock %}
+{% block heading %} — your applications{% endblock %}
+{% block content %}
+<div class="card">
+  <p class="muted">Signed in as {{ user.email }}. <form method="post" action="/logout" style="display:inline"><button type="submit">Log out</button></form></p>
+</div>
+{% if runs %}
+{% for run in runs %}
+<div class="card">
+  <h3>{{ run.scheme_source }}</h3>
+  <p class="muted">Status: {{ run.status }} — started {{ run.created_at }}</p>
+</div>
+{% endfor %}
+{% else %}
+<div class="card"><p class="muted">No applications yet.</p></div>
+{% endif %}
+{% endblock %}
