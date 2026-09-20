@@ -56,7 +56,7 @@ flowchart TB
     CROSS --> PACKAGE
     ESCALATE --> PACKAGE
 
-    PACKAGE["packager<br/>documents/ · values.csv ·<br/>audit_report.pdf · checklist.md"]:::det
+    PACKAGE["packager<br/>documents/ · form_values.html ·<br/>audit_report.pdf · checklist.md"]:::det
 
     subgraph WATCHER["Expiry watcher — separate track, its own schedule"]
         direction LR

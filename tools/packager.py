@@ -7,7 +7,8 @@ Kagaz never submits anything to any portal; a human takes it from here.
 
 <student>_<scheme>/
   documents/          converted, portal-spec compliant (tools/formatting.py)
-  values.csv          field label -> value, keyed to Requirement.required_fields
+  form_values.html    field label -> value with copy buttons, for filling the form
+  values.csv          the same data for a spreadsheet
   audit_report.pdf    findings grouped by severity, evidence, decision log
   checklist.md        required vs found vs missing
 """
@@ -122,30 +123,194 @@ def _map_field_label(label: str) -> str | None:
     that's most portal fields (Aadhaar number, IFSC code, course details,
     ...); those correctly end up blank in values.csv."""
     lowered = label.lower()
+    # Order matters, in both directions. The qualified "name" labels must
+    # beat the bare one ("Bank Name" is not the applicant's name), and the
+    # bare one must beat the identifier patterns — a portal asking for
+    # "Full Name (as per Aadhaar)" wants the name, not the Aadhaar number.
     if "father" in lowered or "guardian" in lowered:
         return "father_name"
+    if "name" in lowered:
+        if "bank" in lowered or "branch" in lowered:
+            return "bank_name"
+        if "institution" in lowered or "school" in lowered or "college" in lowered or "board" in lowered:
+            return "institution"
+        return "name"
     if "birth" in lowered or " dob" in f" {lowered}":
         return "dob"
+    if "aadhaar" in lowered or "aadhar" in lowered or "uid" in lowered:
+        return "aadhaar_no"
+    if "ifsc" in lowered:
+        return "ifsc_code"
     if "bank account" in lowered or ("account" in lowered and ("no" in lowered or "number" in lowered)):
         return "account_no"
-    if "ifsc" in lowered:
-        return None
     if "income" in lowered:
         return "annual_income"
+    if "caste" in lowered or "category" in lowered or "community" in lowered:
+        return "caste_category"
+    if "roll" in lowered or "enrol" in lowered or "registration no" in lowered:
+        return "roll_no"
+    if "percent" in lowered or "marks" in lowered or "cgpa" in lowered:
+        return "marks_percent"
+    if "institution" in lowered or "school" in lowered or "college" in lowered or "board" in lowered:
+        return "institution"
+    if "address" in lowered or "residence" in lowered or "domicile" in lowered:
+        return "address"
+    if "certificate" in lowered and ("no" in lowered or "number" in lowered):
+        return "certificate_no"
     if "name" in lowered:
         return "name"
     return None
 
 
-def _write_values_csv(requirement: Requirement, documents: list[ExtractedDocument], dest_path: Path) -> None:
+def _resolve_values(requirement: Requirement, documents: list[ExtractedDocument]) -> list[tuple[str, str, str]]:
+    """(form's field label, value, source document) for every field the
+    form asks for. Value is "" when no document supplied it — never a
+    guess, because a wrong Aadhaar number pasted into a government form
+    is worse than a blank one."""
     aggregated = _aggregate_fields(documents)
+    origin = _field_origins(documents)
+    rows: list[tuple[str, str, str]] = []
+    for label in requirement.required_fields:
+        key = _map_field_label(label)
+        value = aggregated.get(key) if key else None
+        rows.append((label, value or "", origin.get(key, "") if value else ""))
+    return rows
+
+
+def _field_origins(documents: list[ExtractedDocument]) -> dict[str, str]:
+    """Which document each value came from, so a wrong-looking value can
+    be traced back to the page it was read off."""
+    ordered = sorted(documents, key=lambda d: 0 if d.doc_type == "marksheet" else 1)
+    origins: dict[str, str] = {}
+    for doc in ordered:
+        for key in doc.fields:
+            origins.setdefault(key, doc.doc_type.replace("_", " "))
+    return origins
+
+
+def _write_values_csv(requirement: Requirement, documents: list[ExtractedDocument], dest_path: Path) -> None:
     with dest_path.open("w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(["field_label", "value", "note"])
-        for label in requirement.required_fields:
-            internal_key = _map_field_label(label)
-            value = aggregated.get(internal_key) if internal_key else None
-            writer.writerow([label, value or "", "" if value else "not found"])
+        for label, value, _source in _resolve_values(requirement, documents):
+            writer.writerow([label, value, "" if value else "not found"])
+
+
+def _write_values_html(
+    requirement: Requirement, documents: list[ExtractedDocument], dest_path: Path, synthetic: bool = True
+) -> None:
+    """The form-filling sheet, as a page you can actually use.
+
+    This file exists to be read by a person filling a web form field by
+    field — nothing in Kagaz consumes it. A CSV was the wrong container
+    for that: spreadsheets truncate long values in narrow cells, and
+    getting one value onto the clipboard means fighting the grid. Here
+    each value has its own Copy button, values wrap in full, and the
+    source document is named next to each one.
+    """
+    rows = _resolve_values(requirement, documents)
+    filled = sum(1 for _l, v, _s in rows if v)
+    banner = (
+        "SYNTHETIC DEMO DATA — no real students, no real documents"
+        if synthetic
+        else "Your documents — read live from the files you uploaded"
+    )
+
+    def esc(value: str) -> str:
+        return (
+            str(value)
+            .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+        )
+
+    body: list[str] = []
+    for label, value, source in rows:
+        if value:
+            body.append(
+                f'<tr><td class="lbl">{esc(label)}</td>'
+                f'<td class="val"><span class="v" id="v{len(body)}">{esc(value)}</span>'
+                f'<button type="button" class="copy" data-target="v{len(body)}">Copy</button></td>'
+                f'<td class="src">{esc(source)}</td></tr>'
+            )
+        else:
+            body.append(
+                f'<tr class="empty"><td class="lbl">{esc(label)}</td>'
+                f'<td class="val"><span class="none">not on any document you gave Kagaz — '
+                f'fill this one in yourself</span></td><td class="src"></td></tr>'
+            )
+
+    html = f"""<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Form values — {esc(requirement.scheme_name)}</title>
+<style>
+  body {{ font-family: -apple-system, "Segoe UI", Roboto, sans-serif; margin: 0; background: #f8fafc;
+         color: #0f172a; font-size: 15px; line-height: 1.5; }}
+  .wrap {{ max-width: 860px; margin: 0 auto; padding: 0 20px 60px; }}
+  .banner {{ background: {"#7c2d12" if synthetic else "#14532d"}; color: #fff; text-align: center;
+             padding: 9px 16px; font-size: 13px; font-weight: 600; }}
+  h1 {{ font-size: 23px; margin: 28px 0 6px; letter-spacing: -.02em; }}
+  p.lede {{ color: #64748b; margin: 0 0 20px; }}
+  table {{ width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #e2e8f0;
+           border-radius: 10px; overflow: hidden; }}
+  th {{ text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em;
+        color: #94a3b8; padding: 10px 14px; border-bottom: 1px solid #e2e8f0; }}
+  td {{ padding: 12px 14px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }}
+  tr:last-child td {{ border-bottom: none; }}
+  .lbl {{ font-weight: 600; width: 34%; }}
+  .val {{ width: 46%; }}
+  .v {{ display: inline-block; word-break: break-word; margin-right: 8px; }}
+  .src {{ color: #94a3b8; font-size: 12.5px; width: 20%; }}
+  .none {{ color: #b45309; font-size: 13.5px; }}
+  tr.empty {{ background: #fffbeb; }}
+  .copy {{ font: inherit; font-size: 12.5px; padding: 3px 10px; border: 1px solid #cbd5e1;
+           background: #f8fafc; border-radius: 6px; cursor: pointer; }}
+  .copy:hover {{ background: #eef2ff; border-color: #4f46e5; color: #4338ca; }}
+  .copy.done {{ background: #ecfdf5; border-color: #047857; color: #047857; }}
+  .foot {{ color: #94a3b8; font-size: 12.5px; margin-top: 18px; }}
+  @media (max-width: 620px) {{
+    .lbl, .val, .src {{ display: block; width: auto; }}
+    td {{ padding: 8px 14px; }} tr {{ display: block; border-bottom: 1px solid #e2e8f0; }}
+    th {{ display: none; }}
+  }}
+</style></head>
+<body>
+<div class="banner">{esc(banner)}</div>
+<div class="wrap">
+  <h1>{esc(requirement.scheme_name)}</h1>
+  <p class="lede">Every field this form asks for, next to the value read off your own documents —
+  {filled} of {len(rows)} filled. Copy each one straight into the portal so the spelling matches
+  your documents exactly. Kagaz never guesses a value it couldn't find.</p>
+  <table>
+    <tr><th>Field on the form</th><th>Your value</th><th>Read from</th></tr>
+    {"".join(body)}
+  </table>
+  <p class="foot">Generated by Kagaz. Advisory only — check each value against your own documents
+  before submitting. Kagaz does not submit anything to any portal.</p>
+</div>
+<script>
+  document.querySelectorAll(".copy").forEach(function (btn) {{
+    btn.addEventListener("click", function () {{
+      var el = document.getElementById(btn.getAttribute("data-target"));
+      var text = el.textContent;
+      function done() {{
+        var old = btn.textContent; btn.textContent = "Copied"; btn.classList.add("done");
+        setTimeout(function () {{ btn.textContent = old; btn.classList.remove("done"); }}, 1200);
+      }}
+      if (navigator.clipboard && navigator.clipboard.writeText) {{
+        navigator.clipboard.writeText(text).then(done, function () {{ fallback(text, done); }});
+      }} else {{ fallback(text, done); }}
+    }});
+  }});
+  function fallback(text, done) {{
+    var ta = document.createElement("textarea");
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    try {{ document.execCommand("copy"); done(); }} catch (e) {{}}
+    document.body.removeChild(ta);
+  }}
+</script>
+</body></html>
+"""
+    dest_path.write_text(html, encoding="utf-8")
 
 
 # --------------------------------------------------------------------------
@@ -285,6 +450,12 @@ def package_audit(result: AuditResult, output_root: Path, synthetic: bool = True
     dest_dir.mkdir(parents=True, exist_ok=True)
 
     _package_documents(result.extracted_documents, result.requirement.required_documents, dest_dir / "documents")
+    # The HTML sheet is the one a person actually fills the form from
+    # (copy buttons, full values, no truncated cells); the CSV stays for
+    # anyone who wants the same data in a spreadsheet.
+    _write_values_html(
+        result.requirement, result.extracted_documents, dest_dir / "form_values.html", synthetic=synthetic
+    )
     _write_values_csv(result.requirement, result.extracted_documents, dest_dir / "values.csv")
     _write_checklist_md(result.requirement, result.extracted_documents, dest_dir / "checklist.md", synthetic=synthetic)
     _write_audit_report_pdf(result, dest_dir / "audit_report.pdf", synthetic=synthetic)

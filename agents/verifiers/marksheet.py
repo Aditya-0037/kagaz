@@ -8,7 +8,11 @@ from pathlib import Path
 from agents.verifiers.common import run_verifier
 from contracts import ExtractedDocument
 
-EXPECTED_FIELDS = {"name", "father_name", "dob", "roll_no", "marks_percent", "issue_date"}
+EXPECTED_FIELDS = {"name", "father_name", "dob", "roll_no", "marks_percent", "institution", "issue_date"}
+
+# Only some documents of this type print these — extracted when
+# present, but never counted against the extraction confidence.
+OPTIONAL_FIELDS = frozenset({"institution"})
 
 _PROMPT_TEMPLATE = """You are extracting fields from OCR text of an Indian school/board marksheet.
 
@@ -26,8 +30,9 @@ beyond recognition, or absent from the text, leave it null. Never guess a
 value that isn't actually supported by the text.
 
 Extract: name, father_name (the "Father's Name" field), dob (as written),
-roll_no, marks_percent (as written, with the % sign if present), and
-issue_date (as written). Marksheets don't have a validity/expiry date —
+roll_no, marks_percent (as written, with the % sign if present),
+institution (the school, college or board named on it), and issue_date
+(as written). Marksheets don't have a validity/expiry date —
 leave valid_until null regardless of what else is in the text.
 
 OCR TEXT:
@@ -46,4 +51,5 @@ def verify(
         source_path,
         cache_inputs={"doc_type": "marksheet", "student": student_id},
         llm_mode=llm_mode,
+        optional_fields=OPTIONAL_FIELDS,
     )

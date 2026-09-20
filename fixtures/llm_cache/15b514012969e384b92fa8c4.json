@@ -1,0 +1,34 @@
+{
+  "inputs": {
+    "doc_type": "income_certificate",
+    "student": "aditya_sharma"
+  },
+  "model": "gemini-2.5-flash",
+  "prompt": "You are extracting fields from OCR text of an Indian income certificate.\n\nThe OCR text may have lost spaces between adjacent words on some lines\n(e.g. \"PriyaRameshNair\" instead of \"Priya Ramesh Nair\") \u2014 use the field\nlabel immediately before a value and your knowledge of Indian names to\nreconstruct the correct spacing.\n\nThe document may be in Hindi or another Indic language while the form it\nis being submitted to is in English. Return every NAME and PLACE in Latin\nscript, transliterated (\u092a\u094d\u0930\u093f\u092f\u093e \u0930\u092e\u0947\u0936 \u0928\u093e\u092f\u0930 -> \"Priya Ramesh Nair\"), using the\nstandard spelling the person would themselves write in English. Keep\nnumbers, dates and amounts exactly as printed. If a field is genuinely missing, garbled\nbeyond recognition, or absent from the text, leave it null. Never guess a\nvalue that isn't actually supported by the text.\n\nExtract: name, father_name (the \"Father's Name\" field), dob (as written),\ncertificate_no, annual_income (as written, with currency symbol/commas if\npresent), address (the applicant's residential address, if printed),\nissue_date (as written), and valid_until (the \"Valid Until\" field, as\nwritten).\n\nOCR TEXT:\nOffice of the Tehsildar\nINCOME CERTIFICATE\nCertificate No: INC-2026000-ADI\n\nName: Aditya Kumar Sharma\n\nFather's Name: Rajesh Kumar Sharma\n\nDOB: 22/11/2007\n\nAddress: Lucknow, Uttar Pradesh\n\nAnnual Income: Rs. 2,40,000\n\nDate of Issue: 02/05/2026\n\nValid Until: 01/05/2027\n\nSYNTHETIC \u2014 NOT A REAL DOCUMENT\n\n",
+  "provider": "vertex",
+  "response": {
+    "output": {
+      "aadhaar_no": null,
+      "account_no": null,
+      "address": "Lucknow, Uttar Pradesh",
+      "annual_income": "Rs. 2,40,000",
+      "bank_name": null,
+      "caste_category": null,
+      "certificate_no": "INC-2026000-ADI",
+      "dob": "22/11/2007",
+      "father_name": "Rajesh Kumar Sharma",
+      "ifsc_code": null,
+      "institution": null,
+      "issue_date": "02/05/2026",
+      "marks_percent": null,
+      "name": "Aditya Kumar Sharma",
+      "roll_no": null,
+      "valid_until": "01/05/2027"
+    },
+    "usage": {
+      "inputTokens": 474,
+      "outputTokens": 330,
+      "totalTokens": 804
+    }
+  }
+}

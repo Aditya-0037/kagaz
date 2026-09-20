@@ -24,7 +24,11 @@ from contracts import ExtractedDocument
 # Deliberately the identity/date fields only. Document-specific numbers
 # (marks, income, account) belong to the verifiers that know to expect
 # them; here a null would wrongly drag the confidence score down.
-EXPECTED_FIELDS = {"name", "father_name", "dob", "issue_date", "valid_until"}
+EXPECTED_FIELDS = {"name", "father_name", "dob", "aadhaar_no", "address", "issue_date", "valid_until"}
+
+# Only some documents of this type print these — extracted when
+# present, but never counted against the extraction confidence.
+OPTIONAL_FIELDS = frozenset({"aadhaar_no", "address", "issue_date", "valid_until", "father_name"})
 
 _PROMPT_TEMPLATE = """You are extracting identity fields from OCR text of an Indian
 official document. The document is described as: "{doc_label}".
@@ -44,6 +48,8 @@ Extract only these, exactly as written on the document:
 - name: the person the document is about
 - father_name: the "Father's Name" / "Guardian's Name" field, if present
 - dob: date of birth, if present
+- aadhaar_no: a 12-digit Aadhaar number, if this document carries one
+- address: the residential address printed on it, if present
 - issue_date: the date the document was issued, if present
 - valid_until: an expiry / "valid up to" date, if the document carries one
 
@@ -76,4 +82,5 @@ def verify(
         source_path,
         cache_inputs={"doc_type": doc_type, "student": student_id},
         llm_mode=llm_mode,
+        optional_fields=OPTIONAL_FIELDS,
     )

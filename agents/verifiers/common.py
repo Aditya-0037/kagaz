@@ -50,6 +50,13 @@ class VerifierOutput(BaseModel):
     marks_percent: str | None = None
     account_no: str | None = None
     bank_name: str | None = None
+    # Fields a portal form asks for that are printed on these documents
+    # but were previously never extracted, so the applicant had to retype
+    # them by hand — which is where transcription mistakes come from.
+    aadhaar_no: str | None = None
+    ifsc_code: str | None = None
+    address: str | None = None
+    institution: str | None = None
 
 
 # Fields that map onto ExtractedDocument.issue_date/.valid_until directly
@@ -65,12 +72,19 @@ def run_verifier(
     *,
     cache_inputs: dict,
     llm_mode: str | None = None,
+    optional_fields: frozenset[str] = frozenset(),
 ) -> tuple[ExtractedDocument, dict]:
     """Run one verifier call and return (ExtractedDocument, token_usage).
 
     expected_fields defines both what this doc type's prompt should be
     asking about (used for the confidence computation) and which of
     VerifierOutput's fields land in ExtractedDocument.fields.
+
+    optional_fields is the subset of those that only some documents of
+    this type carry — an IFSC code or a branch address on a passbook.
+    They are still extracted and surfaced when present; they just don't
+    drag the confidence score down when the document simply doesn't
+    print them.
     """
     provider = os.environ.get("KAGAZ_MODEL_PROVIDER", "vertex")
     model_name = get_model_identifier(provider)
@@ -129,7 +143,18 @@ def run_verifier(
             if valid_until is not None:
                 filled += 1
 
-    confidence = round(filled / len(expected_fields), 2) if expected_fields else 0.0
+    # Confidence measures "did I read this document's core fields", not
+    # "did this document happen to print every field a portal might ask
+    # for". A passbook with no IFSC on it was read perfectly well — only
+    # the fields every document of this type carries count against it.
+    scored_fields = expected_fields - optional_fields
+    scored_filled = filled - sum(
+        1
+        for name in optional_fields
+        if (name in _DATE_FIELDS and getattr(output, name, None) and name in expected_fields)
+        or (name not in _DATE_FIELDS and fields.get(name))
+    )
+    confidence = round(scored_filled / len(scored_fields), 2) if scored_fields else 1.0
 
     document = ExtractedDocument(
         doc_type=doc_type,

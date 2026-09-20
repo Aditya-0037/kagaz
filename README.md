@@ -76,7 +76,7 @@ source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install --upgrade pip
 pip install -r requirements.txt
 
-pytest                            # 185 tests, replay mode, zero network/credentials
+pytest                            # 248 tests, replay mode, zero network/credentials
                                    # (+6 more that need real GCP credentials — see below)
 
 uvicorn api.main:app --reload
@@ -99,8 +99,9 @@ after a clean clone — no API key, no Ollama install, no network required.
 - **`/signup`, `/login`, `/app` — real accounts.** Your own **digital
   locker**: upload each document once (JPG/PNG/PDF, with an expiry date if
   it has one) and reuse it across applications. Start an application by
-  **pasting a link, uploading a screenshot, uploading the PDF, or pasting
-  the text** — all four feed the same requirement extractor. Kagaz then
+  **dropping in anything** — screenshots, photos, PDFs, pasted text, a link,
+  or any mix of them in one go, plus an optional note on what to pay
+  attention to. Kagaz then
   matches your locker documents to what the scheme requires, runs the
   audit live (never cached, never replayed), pauses on anything ambiguous,
   and hands back a submission-ready folder. Runs and documents persist in
@@ -299,10 +300,11 @@ web UI. Provider migrated from AWS Bedrock to Google Cloud Vertex AI — see
   memory in one process, so the deployment pins `--max-instances 1` and a
   run's progress is lost if the instance restarts. The Firestore record of
   the run survives; the downloadable folder does not.
-- `values.csv` can only fill fields the five verifiers actually extract
-  (name, father's name, DOB, account number, and so on). Everything else a
-  portal asks for — Aadhaar number, IFSC, course codes — is deliberately
-  left blank rather than guessed.
+- The form-filling sheet can only fill fields that appear on a document
+  you actually uploaded. It reads name, father's name, DOB, address,
+  account number, IFSC, bank, category, marks, institution, certificate
+  and Aadhaar numbers — but if you never upload an Aadhaar card, that row
+  stays blank rather than being guessed.
 - Eligibility rules other than the income ceiling are extracted and shown
   to you, but not verified against documents; they're listed for you to
   confirm.

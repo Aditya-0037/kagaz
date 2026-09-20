@@ -1,0 +1,34 @@
+{
+  "inputs": {
+    "doc_type": "bank_passbook",
+    "student": "aditya_sharma"
+  },
+  "model": "gemini-2.5-flash",
+  "prompt": "You are extracting fields from OCR text of an Indian bank passbook's KYC page.\n\nThe OCR text may have lost spaces between adjacent words on some lines\n(e.g. \"PriyaRameshNair\" instead of \"Priya Ramesh Nair\") \u2014 use the field\nlabel immediately before a value and your knowledge of Indian names to\nreconstruct the correct spacing.\n\nThe document may be in Hindi or another Indic language while the form it\nis being submitted to is in English. Return every NAME and PLACE in Latin\nscript, transliterated (\u092a\u094d\u0930\u093f\u092f\u093e \u0930\u092e\u0947\u0936 \u0928\u093e\u092f\u0930 -> \"Priya Ramesh Nair\"), using the\nstandard spelling the person would themselves write in English. Keep\nnumbers, dates and amounts exactly as printed. If a field is genuinely missing, garbled\nbeyond recognition, or absent from the text, leave it null. Never guess a\nvalue that isn't actually supported by the text.\n\nExtract: name, father_name (the \"Father's Name\" field), dob (as written),\naccount_no (as written, including any masking like X's), bank_name,\nifsc_code (the 11-character IFSC of the branch, if printed), address (the\nbranch address, if printed), and issue_date (as written). Bank passbooks don't have a validity/expiry date \u2014\nleave valid_until null regardless of what else is in the text.\n\nOCR TEXT:\nNationalised Bank of India (fictional)\nBANK PASSBOOK \u2014 KYC PAGE\nCertificate No: BAN-2026004-ADI\n\nName: Aditya Sharma\nFather's Name: Rajesh Kumar Sharma\nDOB: 22/11/2007\nAddress: Lucknow, Uttar Pradesh\nAccount No: XXXXXXXX7734\nBank Name: Punjab National Bank\nDate of Issue: 14/02/2023\nSYNTHETIC \u2014 NOT A REAL DOCUMENT\n\n",
+  "provider": "vertex",
+  "response": {
+    "output": {
+      "aadhaar_no": null,
+      "account_no": "XXXXXXXX7734",
+      "address": null,
+      "annual_income": null,
+      "bank_name": "Punjab National Bank",
+      "caste_category": null,
+      "certificate_no": null,
+      "dob": "22/11/2007",
+      "father_name": "Rajesh Kumar Sharma",
+      "ifsc_code": null,
+      "institution": null,
+      "issue_date": "14/02/2023",
+      "marks_percent": null,
+      "name": "Aditya Sharma",
+      "roll_no": null,
+      "valid_until": null
+    },
+    "usage": {
+      "inputTokens": 499,
+      "outputTokens": 477,
+      "totalTokens": 976
+    }
+  }
+}

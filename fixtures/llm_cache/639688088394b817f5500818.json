@@ -1,0 +1,34 @@
+{
+  "inputs": {
+    "doc_type": "marksheet",
+    "student": "mohammed_irfan"
+  },
+  "model": "gemini-2.5-flash",
+  "prompt": "You are extracting fields from OCR text of an Indian school/board marksheet.\n\nThe OCR text may have lost spaces between adjacent words on some lines\n(e.g. \"PriyaRameshNair\" instead of \"Priya Ramesh Nair\") \u2014 use the field\nlabel immediately before a value and your knowledge of Indian names to\nreconstruct the correct spacing.\n\nThe document may be in Hindi or another Indic language while the form it\nis being submitted to is in English. Return every NAME and PLACE in Latin\nscript, transliterated (\u092a\u094d\u0930\u093f\u092f\u093e \u0930\u092e\u0947\u0936 \u0928\u093e\u092f\u0930 -> \"Priya Ramesh Nair\"), using the\nstandard spelling the person would themselves write in English. Keep\nnumbers, dates and amounts exactly as printed. If a field is genuinely missing, garbled\nbeyond recognition, or absent from the text, leave it null. Never guess a\nvalue that isn't actually supported by the text.\n\nExtract: name, father_name (the \"Father's Name\" field), dob (as written),\nroll_no, marks_percent (as written, with the % sign if present),\ninstitution (the school, college or board named on it), and issue_date\n(as written). Marksheets don't have a validity/expiry date \u2014\nleave valid_until null regardless of what else is in the text.\n\nOCR TEXT:\nBoard of Secondary Education\nMARKSHEET\nCertificate No: MAR-2026003-MOH\n\nName:\nMohammed Irfan Sheikh\nFather's Name:\nAbdul Sheikh\nDOB:\n05/06/2007\nAddress:\nBhopal, Madhya Pradesh\nRoll No:\nMP-2026-33012\nMarks Percent:\n76.8%\nDate of Issue:\n25/05/2026\n\nSYNTHETIC \u2014 NOT A REAL DOCUMENT\n\n",
+  "provider": "vertex",
+  "response": {
+    "output": {
+      "aadhaar_no": null,
+      "account_no": null,
+      "address": null,
+      "annual_income": null,
+      "bank_name": null,
+      "caste_category": null,
+      "certificate_no": null,
+      "dob": "05/06/2007",
+      "father_name": "Abdul Sheikh",
+      "ifsc_code": null,
+      "institution": "Board of Secondary Education",
+      "issue_date": "25/05/2026",
+      "marks_percent": "76.8%",
+      "name": "Mohammed Irfan Sheikh",
+      "roll_no": "MP-2026-33012",
+      "valid_until": null
+    },
+    "usage": {
+      "inputTokens": 486,
+      "outputTokens": 299,
+      "totalTokens": 785
+    }
+  }
+}
