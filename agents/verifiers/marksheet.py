@@ -8,11 +8,11 @@ from pathlib import Path
 from agents.verifiers.common import run_verifier
 from contracts import ExtractedDocument
 
-EXPECTED_FIELDS = {"name", "father_name", "dob", "roll_no", "marks_percent", "institution", "issue_date"}
+EXPECTED_FIELDS = {"name", "father_name", "dob", "roll_no", "marks_percent", "institution", "passing_year", "issue_date"}
 
 # Only some documents of this type print these — extracted when
 # present, but never counted against the extraction confidence.
-OPTIONAL_FIELDS = frozenset({"institution"})
+OPTIONAL_FIELDS = frozenset({"institution", "passing_year"})
 
 _PROMPT_TEMPLATE = """You are extracting fields from OCR text of an Indian school/board marksheet.
 
@@ -31,8 +31,9 @@ value that isn't actually supported by the text.
 
 Extract: name, father_name (the "Father's Name" field), dob (as written),
 roll_no, marks_percent (as written, with the % sign if present),
-institution (the school, college or board named on it), and issue_date
-(as written). Marksheets don't have a validity/expiry date —
+institution (the school, college or board named on it), passing_year
+(the year the examination was passed, e.g. "2024" — often printed as the
+exam session or year of passing), and issue_date (as written). Marksheets don't have a validity/expiry date —
 leave valid_until null regardless of what else is in the text.
 
 OCR TEXT:

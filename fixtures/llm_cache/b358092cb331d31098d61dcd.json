@@ -22,13 +22,14 @@
       "issue_date": "14/02/2023",
       "marks_percent": null,
       "name": "Aditya Sharma",
+      "passing_year": null,
       "roll_no": null,
       "valid_until": null
     },
     "usage": {
       "inputTokens": 499,
-      "outputTokens": 477,
-      "totalTokens": 976
+      "outputTokens": 808,
+      "totalTokens": 1307
     }
   }
 }

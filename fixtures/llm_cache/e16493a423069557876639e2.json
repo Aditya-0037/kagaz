@@ -10,7 +10,7 @@
     "output": {
       "aadhaar_no": null,
       "account_no": "XXXXXXXX4821",
-      "address": "Kochi, Kerala",
+      "address": null,
       "annual_income": null,
       "bank_name": "State Bank of India",
       "caste_category": null,
@@ -22,13 +22,14 @@
       "issue_date": "11/08/2022",
       "marks_percent": null,
       "name": "Priya Ramesh Nair",
+      "passing_year": null,
       "roll_no": null,
       "valid_until": null
     },
     "usage": {
       "inputTokens": 505,
-      "outputTokens": 370,
-      "totalTokens": 875
+      "outputTokens": 487,
+      "totalTokens": 992
     }
   }
 }

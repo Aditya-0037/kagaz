@@ -10,7 +10,7 @@
     "output": {
       "aadhaar_no": null,
       "account_no": "XXXXXXXX2290",
-      "address": "Bhopal, Madhya Pradesh",
+      "address": null,
       "annual_income": null,
       "bank_name": "Bank of Baroda",
       "caste_category": null,
@@ -22,13 +22,14 @@
       "issue_date": "30/09/2021",
       "marks_percent": null,
       "name": "Mohammed Irfan Sheikh",
+      "passing_year": null,
       "roll_no": null,
       "valid_until": null
     },
     "usage": {
       "inputTokens": 507,
-      "outputTokens": 414,
-      "totalTokens": 921
+      "outputTokens": 476,
+      "totalTokens": 983
     }
   }
 }

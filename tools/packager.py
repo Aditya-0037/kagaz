@@ -38,26 +38,79 @@ _DEFAULT_MAX_SIZE_KB = 200  # used when a scheme's spec didn't state one
 # stated boundary of what documents alone can confirm. Static content, not
 # an AI judgment call — nothing here is inferred from a specific student's
 # documents.
-NON_DOCUMENT_REJECTION_CAUSES: list[str] = [
-    "NPCI/Aadhaar seeding status of the bank account — a passbook can look "
-    "perfectly valid and still fail DBT credit if the account isn't NPCI-mapped "
-    "to that Aadhaar. Check this on the NPCI mapper or with the bank directly.",
-    "Bank account holder name not matching the applicant's name exactly as "
-    "the bank's own records have it (not just as printed on the passbook).",
-    "Portal downtime or a missed deadline due to last-minute submission — "
-    "Kagaz checks a document's validity against the scheme deadline, not "
-    "whether the portal itself was reachable when you tried to submit.",
-    "Category/income-certificate validity per the *portal's* rules, which "
-    "can be stricter than the certificate's own printed validity window "
-    "(e.g. some portals only accept certificates issued in the current "
-    "financial year regardless of printed expiry).",
-    "Duplicate or prior-year application already on file for this student "
-    "under this scheme — not something any single document reveals.",
-    "Institution/course eligibility for this specific scheme — Kagaz "
-    "verifies the documents you gave it against the scheme's stated "
-    "document/format requirements, not whether your institution or course "
-    "is itself eligible for the scheme.",
+#
+# Each entry is (applies-to-this-form predicate, text). Showing all of
+# them on every form was wrong: a form that never asks for a bank
+# passbook has no DBT leg, so warning about NPCI seeding is noise that
+# trains people to skim past the list — and skimming past it defeats the
+# point of separating "checked" from "you must check".
+_REJECTION_CAUSES: list[tuple[str, str]] = [
+    (
+        "bank_passbook",
+        "NPCI/Aadhaar seeding status of the bank account — a passbook can look "
+        "perfectly valid and still fail DBT credit if the account isn't NPCI-mapped "
+        "to that Aadhaar. Check this on the NPCI mapper or with the bank directly.",
+    ),
+    (
+        "bank_passbook",
+        "Bank account holder name not matching the applicant's name exactly as "
+        "the bank's own records have it (not just as printed on the passbook).",
+    ),
+    (
+        "deadline",
+        "Portal downtime or a missed deadline due to last-minute submission — "
+        "Kagaz checks a document's validity against the scheme deadline, not "
+        "whether the portal itself was reachable when you tried to submit.",
+    ),
+    (
+        "dated_certificate",
+        "Certificate validity per the *portal's* rules, which can be stricter "
+        "than the certificate's own printed validity window (e.g. some portals "
+        "only accept certificates issued in the current financial year "
+        "regardless of printed expiry).",
+    ),
+    (
+        "always",
+        "Duplicate or prior-year application already on file for you under this "
+        "scheme — not something any single document reveals.",
+    ),
+    (
+        "eligibility",
+        "Whether you personally meet this form's eligibility rules — Kagaz "
+        "checks the documents you gave it against the document and format "
+        "requirements it stated, not whether you or your institution qualify.",
+    ),
 ]
+
+_DATED_DOC_TYPES = {"income_certificate", "caste_certificate", "domicile_certificate"}
+
+
+def relevant_rejection_causes(requirement: Requirement | None = None) -> list[str]:
+    """The can't-verify causes that actually apply to this form.
+
+    With no requirement (or one carrying nothing to go on) every cause is
+    returned, since there's no basis for ruling any out.
+    """
+    if requirement is None:
+        return [text for _applies, text in _REJECTION_CAUSES]
+
+    doc_types = {rd.doc_type for rd in requirement.required_documents}
+    applicable = {
+        "always",
+        *({"bank_passbook"} if "bank_passbook" in doc_types else set()),
+        *({"deadline"} if requirement.deadline else set()),
+        *({"dated_certificate"} if doc_types & _DATED_DOC_TYPES else set()),
+        *(
+            {"eligibility"}
+            if (requirement.eligibility_criteria or requirement.max_family_income_inr)
+            else set()
+        ),
+    }
+    return [text for applies, text in _REJECTION_CAUSES if applies in applicable]
+
+
+# Kept for callers that want the unfiltered list.
+NON_DOCUMENT_REJECTION_CAUSES: list[str] = [text for _applies, text in _REJECTION_CAUSES]
 
 _styles = getSampleStyleSheet()
 _H1 = ParagraphStyle("PkgH1", parent=_styles["Heading1"], fontSize=16, spaceAfter=10)
@@ -158,16 +211,56 @@ def _package_documents(
 # --------------------------------------------------------------------------
 
 
+def _values_of(doc: ExtractedDocument) -> dict[str, str]:
+    """Everything readable off one document, including the two dates.
+
+    issue_date and valid_until are parsed onto their own attributes
+    rather than left in .fields, so a lookup that only read .fields could
+    never surface them — a "Date of Issue" field on a form came back
+    blank even when the date was printed plainly on the certificate.
+    """
+    values = dict(doc.fields)
+    if doc.issue_date:
+        values["issue_date"] = doc.issue_date.strftime("%d/%m/%Y")
+    if doc.valid_until:
+        values["valid_until"] = doc.valid_until.strftime("%d/%m/%Y")
+    return values
+
+
+def _values_by_doc_type(documents: list[ExtractedDocument]) -> dict[str, dict[str, str]]:
+    return {doc.doc_type: _values_of(doc) for doc in documents}
+
+
 def _aggregate_fields(documents: list[ExtractedDocument]) -> dict[str, str]:
-    """Merge every document's fields into one lookup, marksheet first (the
+    """Merge every document's values into one lookup, marksheet first (the
     same reference-document precedence cross_checker uses) so a name/dob
     collision resolves consistently rather than depending on dict order."""
     ordered = sorted(documents, key=lambda d: 0 if d.doc_type == "marksheet" else 1)
     aggregated: dict[str, str] = {}
     for doc in ordered:
-        for key, value in doc.fields.items():
+        for key, value in _values_of(doc).items():
             aggregated.setdefault(key, value)
     return aggregated
+
+
+# Words a form uses to name which document a field belongs to. "Income
+# Certificate – Date of Issue" must read the income certificate's date,
+# not whichever document happened to be merged first.
+_DOC_HINTS: list[tuple[tuple[str, ...], str]] = [
+    (("income certificate", "income cert"), "income_certificate"),
+    (("caste certificate", "category certificate"), "caste_certificate"),
+    (("domicile", "residence certificate"), "domicile_certificate"),
+    (("marksheet", "mark sheet", "class 10", "class 12", "class x", "class xii", "qualifying exam"), "marksheet"),
+    (("passbook", "bank account", "bank statement"), "bank_passbook"),
+]
+
+
+def _doc_type_hint(label: str) -> str | None:
+    lowered = label.lower()
+    for needles, doc_type in _DOC_HINTS:
+        if any(n in lowered for n in needles):
+            return doc_type
+    return None
 
 
 def _map_field_label(label: str) -> str | None:
@@ -191,12 +284,29 @@ def _map_field_label(label: str) -> str | None:
         return "name"
     if "birth" in lowered or " dob" in f" {lowered}":
         return "dob"
+    # Dates before anything else that could swallow them: "Income
+    # Certificate – Date of Issue" is a date, not an income amount.
+    if "valid" in lowered or "expiry" in lowered or "expires" in lowered:
+        return "valid_until"
+    if "issue" in lowered or "issued" in lowered:
+        return "issue_date"
+    if "year of passing" in lowered or "passing year" in lowered or "year of pass" in lowered:
+        return "passing_year"
     if "aadhaar" in lowered or "aadhar" in lowered or "uid" in lowered:
         return "aadhaar_no"
     if "ifsc" in lowered:
         return "ifsc_code"
     if "bank account" in lowered or ("account" in lowered and ("no" in lowered or "number" in lowered)):
         return "account_no"
+    # Certificate identifiers before the income-amount rule: "income
+    # certificate no." asks for the certificate's number, and returning
+    # the income figure for it was simply wrong.
+    if "certificate" in lowered and (
+        "no" in lowered or "number" in lowered or "id" in lowered or "confirmation" in lowered
+    ):
+        return "certificate_no"
+    if "confirmation" in lowered or "acknowledgement" in lowered or "reference no" in lowered:
+        return "certificate_no"
     if "income" in lowered:
         return "annual_income"
     if "caste" in lowered or "category" in lowered or "community" in lowered:
@@ -222,12 +332,26 @@ def _resolve_values(requirement: Requirement, documents: list[ExtractedDocument]
     guess, because a wrong Aadhaar number pasted into a government form
     is worse than a blank one."""
     aggregated = _aggregate_fields(documents)
+    by_type = _values_by_doc_type(documents)
     origin = _field_origins(documents)
+
     rows: list[tuple[str, str, str]] = []
     for label in requirement.required_fields:
         key = _map_field_label(label)
-        value = aggregated.get(key) if key else None
-        rows.append((label, value or "", origin.get(key, "") if value else ""))
+        if not key:
+            rows.append((label, "", ""))
+            continue
+
+        # If the label names a document, read that document. Otherwise
+        # fall back to the merged view.
+        hint = _doc_type_hint(label)
+        value = by_type.get(hint, {}).get(key) if hint else None
+        source = hint.replace("_", " ") if (hint and value) else ""
+        if not value:
+            value = aggregated.get(key)
+            source = origin.get(key, "") if value else ""
+
+        rows.append((label, value or "", source))
     return rows
 
 
@@ -237,7 +361,7 @@ def _field_origins(documents: list[ExtractedDocument]) -> dict[str, str]:
     ordered = sorted(documents, key=lambda d: 0 if d.doc_type == "marksheet" else 1)
     origins: dict[str, str] = {}
     for doc in ordered:
-        for key in doc.fields:
+        for key in _values_of(doc):
             origins.setdefault(key, doc.doc_type.replace("_", " "))
     return origins
 
@@ -433,7 +557,7 @@ def _write_checklist_md(
         "linkage, not something printed on any document:",
         "",
     ]
-    lines += [f"- {cause}" for cause in NON_DOCUMENT_REJECTION_CAUSES]
+    lines += [f"- {cause}" for cause in relevant_rejection_causes(requirement)]
 
     dest_path.write_text("\n".join(lines), encoding="utf-8")
 
@@ -488,7 +612,7 @@ def _write_audit_report_pdf(result: AuditResult, dest_path: Path, synthetic: boo
             _BODY,
         )
     )
-    for cause in NON_DOCUMENT_REJECTION_CAUSES:
+    for cause in relevant_rejection_causes(result.requirement):
         story.append(Paragraph(f"&bull; {cause}", _EVIDENCE))
 
     if result.decision_log:

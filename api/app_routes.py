@@ -32,7 +32,7 @@ from api.templates import templates
 from auth import require_user
 from contracts import Requirement
 from tools.doc_types import CANONICAL_DOC_TYPES, normalize_doc_type
-from tools.packager import NON_DOCUMENT_REJECTION_CAUSES
+from tools.packager import relevant_rejection_causes
 
 router = APIRouter()
 
@@ -509,7 +509,9 @@ def run_status(request: Request, run_id: str, user_id: str = Depends(require_use
             "run": run,
             "run_id": run_id,
             "state": state,
-            "non_document_causes": NON_DOCUMENT_REJECTION_CAUSES,
+            "non_document_causes": relevant_rejection_causes(
+                state.result.requirement if state and state.result else None
+            ),
         },
     )
 

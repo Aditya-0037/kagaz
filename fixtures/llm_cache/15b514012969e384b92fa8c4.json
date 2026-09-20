@@ -22,13 +22,14 @@
       "issue_date": "02/05/2026",
       "marks_percent": null,
       "name": "Aditya Kumar Sharma",
+      "passing_year": null,
       "roll_no": null,
       "valid_until": "01/05/2027"
     },
     "usage": {
       "inputTokens": 474,
-      "outputTokens": 330,
-      "totalTokens": 804
+      "outputTokens": 325,
+      "totalTokens": 799
     }
   }
 }

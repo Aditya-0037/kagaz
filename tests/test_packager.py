@@ -208,3 +208,100 @@ def test_checklist_lists_what_is_still_needed(priya_result, tmp_path):
     text = (dest / "checklist.md").read_text(encoding="utf-8")
     assert "Still to do before you submit" in text
     assert "ews certificate" in text
+
+
+def test_dates_printed_on_a_certificate_reach_the_form_sheet():
+    # Regression: issue_date/valid_until are parsed onto their own
+    # attributes instead of .fields, and the value lookup only read
+    # .fields — so a "Date of Issue" field came back blank even when the
+    # date was printed plainly on the certificate.
+    from datetime import date as _date
+
+    from contracts import ExtractedDocument, Requirement, RequiredDoc
+    from tools.packager import _resolve_values
+
+    doc = ExtractedDocument(
+        doc_type="income_certificate",
+        source_path="income.jpg",
+        fields={"certificate_no": "INC-2026-0042"},
+        issue_date=_date(2026, 5, 29),
+        valid_until=_date(2027, 5, 28),
+        extraction_confidence=1.0,
+    )
+    req = Requirement(
+        scheme_id="s", scheme_name="S",
+        required_documents=[RequiredDoc(doc_type="income_certificate")],
+        required_fields=["Income Certificate – Date of Issue", "income certificate no."],
+        source="text", confidence=1.0,
+    )
+
+    values = {label: value for label, value, _src in _resolve_values(req, [doc])}
+    assert values["Income Certificate – Date of Issue"] == "29/05/2026"
+    # and the certificate number is the number, not the income amount
+    assert values["income certificate no."] == "INC-2026-0042"
+
+
+def test_a_field_naming_a_document_reads_that_document():
+    from datetime import date as _date
+
+    from contracts import ExtractedDocument, Requirement, RequiredDoc
+    from tools.packager import _resolve_values
+
+    income = ExtractedDocument(
+        doc_type="income_certificate", source_path="i.jpg", fields={},
+        issue_date=_date(2026, 5, 29), extraction_confidence=1.0,
+    )
+    marks = ExtractedDocument(
+        doc_type="marksheet", source_path="m.jpg", fields={},
+        issue_date=_date(2024, 6, 1), extraction_confidence=1.0,
+    )
+    req = Requirement(
+        scheme_id="s", scheme_name="S",
+        required_documents=[RequiredDoc(doc_type="income_certificate"), RequiredDoc(doc_type="marksheet")],
+        required_fields=["Income Certificate Date of Issue", "Marksheet Date of Issue"],
+        source="text", confidence=1.0,
+    )
+
+    values = {label: value for label, value, _src in _resolve_values(req, [marks, income])}
+    assert values["Income Certificate Date of Issue"] == "29/05/2026"
+    assert values["Marksheet Date of Issue"] == "01/06/2024"
+
+
+def test_npci_is_only_listed_when_the_form_wants_a_bank_passbook():
+    # A form that never asks for a passbook has no DBT leg, so warning
+    # about NPCI seeding is noise that teaches people to skim the list.
+    from contracts import Requirement, RequiredDoc
+    from tools.packager import relevant_rejection_causes
+
+    no_bank = Requirement(
+        scheme_id="s", scheme_name="S",
+        required_documents=[RequiredDoc(doc_type="income_certificate")],
+        required_fields=[], source="text", confidence=1.0,
+    )
+    with_bank = no_bank.model_copy(
+        update={"required_documents": [RequiredDoc(doc_type="bank_passbook")]}
+    )
+
+    assert not any("NPCI" in c for c in relevant_rejection_causes(no_bank))
+    assert any("NPCI" in c for c in relevant_rejection_causes(with_bank))
+    # something always applies, so the section is never empty
+    assert relevant_rejection_causes(no_bank)
+
+
+def test_deadline_and_eligibility_causes_track_the_form():
+    from datetime import date as _date
+
+    from contracts import Requirement
+    from tools.packager import relevant_rejection_causes
+
+    bare = Requirement(
+        scheme_id="s", scheme_name="S", required_documents=[], required_fields=[],
+        source="text", confidence=1.0,
+    )
+    assert not any("deadline" in c.lower() for c in relevant_rejection_causes(bare))
+
+    dated = bare.model_copy(update={"deadline": _date(2026, 12, 20)})
+    assert any("deadline" in c.lower() for c in relevant_rejection_causes(dated))
+
+    eligible = bare.model_copy(update={"max_family_income_inr": 100000})
+    assert any("eligibility rules" in c for c in relevant_rejection_causes(eligible))

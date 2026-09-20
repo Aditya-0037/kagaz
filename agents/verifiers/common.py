@@ -57,6 +57,7 @@ class VerifierOutput(BaseModel):
     ifsc_code: str | None = None
     address: str | None = None
     institution: str | None = None
+    passing_year: str | None = None
 
 
 # Fields that map onto ExtractedDocument.issue_date/.valid_until directly
