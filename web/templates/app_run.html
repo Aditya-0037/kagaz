@@ -114,6 +114,26 @@
     </div>
   </div>
 
+  {% set missing = state.result.findings | selectattr("category", "equalto", "missing") | list %}
+  {% if missing or state.packaging_problems %}
+  <div class="card severity-worth_knowing">
+    <h2>Still to do before you submit</h2>
+    <ul style="margin:10px 0 0; padding-left:18px">
+      {% for f in missing %}
+      <li class="evidence" style="margin-bottom:8px">
+        <strong>{{ f.message }}</strong> Add it to your locker and run this again, or attach it on the
+        portal yourself.
+      </li>
+      {% endfor %}
+      {% for p in state.packaging_problems %}
+      <li class="evidence" style="margin-bottom:8px">{{ p }}</li>
+      {% endfor %}
+    </ul>
+    <p class="tiny" style="margin:12px 0 0">Everything else in the folder is ready to use —
+    this list is also written into <strong>checklist.md</strong> inside it.</p>
+  </div>
+  {% endif %}
+
   {% if state.result.requirement.max_family_income_inr or state.result.requirement.eligibility_criteria %}
   <div class="card">
     <div class="card-row" style="margin-bottom:4px">

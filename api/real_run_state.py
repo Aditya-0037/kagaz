@@ -37,6 +37,7 @@ class RealRunState:
     result: AuditResult | None = None
     package_dir: Path | None = None
     error: str | None = None
+    packaging_problems: list[str] = field(default_factory=list)
     decision_queue: queue.Queue = field(default_factory=queue.Queue, repr=False)
 
 
@@ -66,7 +67,12 @@ def _run(state: RealRunState, requirement: Requirement, gcs_uris: dict[str, str]
             state.user_id, state.run_id, requirement, temp_paths, _decision_provider(state)
         )
         state.result = result
-        state.package_dir = package_audit(result, PACKAGES_DIR, synthetic=False)
+        # Packaging runs after the audit has already done its work. It
+        # must not be able to throw away that work: a file it can't
+        # convert becomes a note in the folder, not a failed run.
+        state.package_dir = package_audit(
+            result, PACKAGES_DIR, synthetic=False, problems=state.packaging_problems
+        )
         state.status = "complete"
         db.update_run(
             state.run_id,
@@ -89,8 +95,17 @@ def _run(state: RealRunState, requirement: Requirement, gcs_uris: dict[str, str]
         shutil.rmtree(REAL_OCR_CACHE_DIR, ignore_errors=True)
 
 
-def start_run(run_id: str, user_id: str, requirement: Requirement, gcs_uris: dict[str, str]) -> RealRunState:
-    state = RealRunState(run_id=run_id, user_id=user_id)
+def start_run(
+    run_id: str,
+    user_id: str,
+    requirement: Requirement,
+    gcs_uris: dict[str, str],
+    rejected: list[str] | None = None,
+) -> RealRunState:
+    # Files Kagaz refused at upload travel with the run so the results
+    # page can say "you gave me this and I couldn't take it", instead of
+    # the document simply appearing as missing.
+    state = RealRunState(run_id=run_id, user_id=user_id, packaging_problems=list(rejected or []))
     RUNS[run_id] = state
     db.update_run(run_id, status="running")
     threading.Thread(target=_run, args=(state, requirement, gcs_uris), daemon=True).start()

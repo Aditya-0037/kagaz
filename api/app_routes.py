@@ -61,17 +61,35 @@ def doc_type_label(doc_type: str) -> str:
 # or the vision backend, PDFs through pdfplumber's text layer. Anything
 # else (a .docx, a .txt renamed from something, a zip) would only fail
 # later, mid-run — reject it at the door with a clear message instead.
-ACCEPTED_DOC_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff", ".pdf"}
+ACCEPTED_DOC_SUFFIXES = {
+    ".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff", ".pdf",
+    # Phones and Windows hand people these constantly: an iPhone photo is
+    # .heic, "Save image as" in Windows produces .jfif. Rejecting them
+    # meant a document someone really had was treated as not provided.
+    ".heic", ".heif", ".jfif", ".gif", ".avif",
+}
+
+# Things that are definitely not a scan of a document, worth naming so the
+# message can be specific rather than "unsupported file".
+_OFFICE_SUFFIXES = {".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".odt", ".zip", ".rar"}
 
 
 def _reject_reason(upload: UploadFile) -> str | None:
     name = (upload.filename or "").strip()
     if not name:
         return "No file was chosen."
-    if Path(name).suffix.lower() not in ACCEPTED_DOC_SUFFIXES:
+    suffix = Path(name).suffix.lower()
+    if suffix in _OFFICE_SUFFIXES:
+        return (
+            f"{name} is a {suffix.lstrip('.').upper()} file. Kagaz needs the document itself — "
+            "a photo or scan (JPG, PNG, HEIC) or a PDF."
+        )
+    # No extension at all is usually a phone upload; let the reader try it
+    # as an image rather than refusing a document the person really has.
+    if suffix and suffix not in ACCEPTED_DOC_SUFFIXES:
         return (
             f"{name} isn't a file Kagaz can read. Upload a photo or scan "
-            "(JPG, PNG) or a PDF of the document."
+            "(JPG, PNG, HEIC) or a PDF of the document."
         )
     return None
 
@@ -447,6 +465,7 @@ async def start_matched_run(
     form = await request.form()
 
     gcs_uris: dict[str, str] = {}
+    rejected: list[str] = []
     for required in requirement.required_documents:
         doc_type = required.doc_type
         choice = form.get(f"choice_{doc_type}")
@@ -456,9 +475,13 @@ async def start_matched_run(
             upload = form.get(f"file_{doc_type}")
             if upload is None or not getattr(upload, "filename", None):
                 continue
-            if _reject_reason(upload):
-                # Skipped rather than failed: the run still proceeds and
-                # reports this document as missing, which is the truth.
+            reason = _reject_reason(upload)
+            if reason:
+                # Never silently. Dropping the file and then reporting the
+                # document as "not provided" tells someone who did provide
+                # it that they didn't — they have no way to know Kagaz
+                # refused it, or why.
+                rejected.append(f"{doc_type_label(doc_type)}: {reason}")
                 continue
             expiry = form.get(f"expiry_{doc_type}", "")
             document_id = _save_upload(user_id, doc_type, "", upload, expiry)
@@ -468,7 +491,7 @@ async def start_matched_run(
         if document is not None and document.get("user_id") == user_id:
             gcs_uris[doc_type] = document["gcs_uri"]
 
-    real_run_state.start_run(run_id, user_id, requirement, gcs_uris)
+    real_run_state.start_run(run_id, user_id, requirement, gcs_uris, rejected=rejected)
     return RedirectResponse(f"/app/runs/{run_id}", status_code=303)
 
 

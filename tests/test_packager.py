@@ -145,3 +145,66 @@ def test_audit_report_pdf_lists_findings_grouped_by_severity():
     assert "Decision Log" in text
     assert "override" in text
     assert "checked manually" in text
+
+
+def _result_with_source(priya_result, doc_type, source_path):
+    """priya's AuditResult, but one document points at a different file."""
+    docs = []
+    for d in priya_result.extracted_documents:
+        docs.append(d.model_copy(update={"source_path": source_path}) if d.doc_type == doc_type else d)
+    return priya_result.model_copy(update={"extracted_documents": docs})
+
+
+def test_a_pdf_source_is_packaged_not_crashed_on(priya_result, tmp_path):
+    # Regression: format_document_pdf opens the source with PIL, so a user
+    # who uploaded a PDF crashed packaging with "cannot identify image
+    # file" — AFTER the audit had finished, throwing away the entire
+    # folder: values sheet, checklist and report included.
+    from tools.packager import package_audit
+
+    pdf = tmp_path / "source.pdf"
+    pdf.write_bytes((Path(__file__).parent.parent / "fixtures" / "schemes" / "scheme_a_postmatric.pdf").read_bytes())
+
+    problems: list[str] = []
+    dest = package_audit(_result_with_source(priya_result, "income_certificate", pdf), tmp_path, problems=problems)
+
+    # the whole folder still exists
+    assert (dest / "form_values.html").is_file()
+    assert (dest / "checklist.md").is_file()
+    assert (dest / "audit_report.pdf").is_file()
+    # and the PDF came through as a PDF
+    assert (dest / "documents" / "income_certificate.pdf").is_file()
+
+
+def test_one_unconvertible_file_does_not_cost_the_whole_folder(priya_result, tmp_path):
+    from tools.packager import package_audit
+
+    junk = tmp_path / "broken.jpg"
+    junk.write_bytes(b"not an image at all")
+
+    problems: list[str] = []
+    dest = package_audit(_result_with_source(priya_result, "marksheet", junk), tmp_path, problems=problems)
+
+    assert (dest / "form_values.html").is_file()
+    assert (dest / "checklist.md").is_file()
+    assert any("marksheet" in p for p in problems)
+    # and the user is told, in the folder itself
+    assert "couldn't convert" in (dest / "checklist.md").read_text(encoding="utf-8")
+
+
+def test_checklist_lists_what_is_still_needed(priya_result, tmp_path):
+    from contracts import RequiredDoc
+    from tools.packager import package_audit
+
+    req = priya_result.requirement
+    trimmed = priya_result.model_copy(
+        update={
+            "requirement": req.model_copy(
+                update={"required_documents": list(req.required_documents) + [RequiredDoc(doc_type="ews_certificate")]}
+            )
+        }
+    )
+    dest = package_audit(trimmed, tmp_path)
+    text = (dest / "checklist.md").read_text(encoding="utf-8")
+    assert "Still to do before you submit" in text
+    assert "ews certificate" in text

@@ -71,11 +71,28 @@ _EVIDENCE = ParagraphStyle("PkgEvidence", parent=_BODY, leftIndent=18, textColor
 # --------------------------------------------------------------------------
 
 
-def _package_one_document(doc_type: str, source_path: Path, required: RequiredDoc | None, dest_dir: Path) -> None:
+def _package_one_document(
+    doc_type: str, source_path: Path, required: RequiredDoc | None, dest_dir: Path, problems: list[str]
+) -> None:
     if not source_path.exists():
         return  # nothing to package if the source itself is missing
 
+    label = doc_type.replace("_", " ")
+    source_is_pdf = source_path.suffix.lower() == ".pdf"
+
     if doc_type in _IMAGE_DOC_TYPES:
+        if source_is_pdf:
+            # A PDF where the portal wants a photo/signature image.
+            # Rasterising a PDF needs a renderer this project doesn't
+            # ship, so pass the file through and say plainly that this one
+            # still needs converting by hand — silently shipping a PDF the
+            # portal will reject is worse.
+            (dest_dir / f"{doc_type}.pdf").write_bytes(source_path.read_bytes())
+            problems.append(
+                f"{label}: you supplied a PDF, but this form wants an image. Kagaz copied the PDF "
+                "through unchanged — export it as a JPG/PNG and re-run, or convert it before uploading."
+            )
+            return
         if required and required.dimensions_px and required.max_size_kb:
             format_photo(source_path, dest_dir / f"{doc_type}.jpg", required.dimensions_px, required.max_size_kb)
         else:
@@ -86,17 +103,54 @@ def _package_one_document(doc_type: str, source_path: Path, required: RequiredDo
     formats = [f.lower() for f in (required.file_formats if required else [])]
     max_kb = (required.max_size_kb if required else None) or _DEFAULT_MAX_SIZE_KB
 
+    if source_is_pdf:
+        # Already the format most portals ask for. format_document_pdf
+        # wraps an *image* into a PDF and would fail on PDF bytes with
+        # "cannot identify image file" — which previously took the whole
+        # package down after the audit had already finished.
+        dest = dest_dir / f"{doc_type}.pdf"
+        dest.write_bytes(source_path.read_bytes())
+        size_kb = dest.stat().st_size / 1024
+        if size_kb > max_kb:
+            problems.append(
+                f"{label}: your PDF is {size_kb:.0f}KB but this form's limit is {max_kb}KB. "
+                "Kagaz can resize images to a size limit, but not re-compress a PDF — "
+                "upload it as a JPG/PNG scan instead and Kagaz will fit it to the limit."
+            )
+        if formats and "pdf" not in formats:
+            problems.append(
+                f"{label}: this form asks for {'/'.join(formats).upper()} and you supplied a PDF. "
+                "Upload a JPG/PNG scan and Kagaz will convert it to the format the form wants."
+            )
+        return
+
     if not formats or "pdf" in formats:
         format_document_pdf(source_path, dest_dir / f"{doc_type}.pdf", max_kb)
     else:
         convert_image_format(source_path, dest_dir / f"{doc_type}.{formats[0]}", formats[0])
 
 
-def _package_documents(documents: list[ExtractedDocument], required_documents: list[RequiredDoc], dest_dir: Path) -> None:
+def _package_documents(
+    documents: list[ExtractedDocument],
+    required_documents: list[RequiredDoc],
+    dest_dir: Path,
+    problems: list[str],
+) -> None:
     required_by_type = {rd.doc_type: rd for rd in required_documents}
     dest_dir.mkdir(parents=True, exist_ok=True)
     for doc in documents:
-        _package_one_document(doc.doc_type, doc.source_path, required_by_type.get(doc.doc_type), dest_dir)
+        try:
+            _package_one_document(
+                doc.doc_type, doc.source_path, required_by_type.get(doc.doc_type), dest_dir, problems
+            )
+        except Exception as exc:  # noqa: BLE001 - one file must never cost the whole folder
+            # The folder is the entire deliverable. Losing all of it —
+            # the values sheet, the checklist, the report — because one
+            # document wouldn't convert is the worst possible trade.
+            problems.append(
+                f"{doc.doc_type.replace('_', ' ')}: could not be reformatted ({exc}). "
+                "The rest of this folder is still complete; convert this one by hand."
+            )
 
 
 # --------------------------------------------------------------------------
@@ -319,7 +373,11 @@ def _write_values_html(
 
 
 def _write_checklist_md(
-    requirement: Requirement, documents: list[ExtractedDocument], dest_path: Path, synthetic: bool = True
+    requirement: Requirement,
+    documents: list[ExtractedDocument],
+    dest_path: Path,
+    synthetic: bool = True,
+    problems: list[str] | None = None,
 ) -> None:
     found_types = {d.doc_type for d in documents}
     banner = (
@@ -344,6 +402,27 @@ def _write_checklist_md(
     missing = [rd.doc_type for rd in requirement.required_documents if rd.doc_type not in found_types]
     lines.append("")
     lines.append("Missing: none." if not missing else f"Missing: {', '.join(missing)}.")
+
+    if missing:
+        lines += [
+            "",
+            "## Still to do before you submit",
+            "",
+        ]
+        lines += [
+            f"- Get a **{doc_type.replace('_', ' ')}** and add it — this form requires it."
+            for doc_type in missing
+        ]
+
+    if problems:
+        lines += [
+            "",
+            "## Files Kagaz couldn't convert for you",
+            "",
+            "Everything else in this folder is ready. These need a hand:",
+            "",
+        ]
+        lines += [f"- {p}" for p in problems]
 
     lines += [
         "",
@@ -441,15 +520,29 @@ def _write_audit_report_pdf(result: AuditResult, dest_path: Path, synthetic: boo
 # --------------------------------------------------------------------------
 
 
-def package_audit(result: AuditResult, output_root: Path, synthetic: bool = True) -> Path:
+def package_audit(
+    result: AuditResult,
+    output_root: Path,
+    synthetic: bool = True,
+    problems: list[str] | None = None,
+) -> Path:
     """Build the full deliverable folder for one AuditResult and return
     its path. synthetic=False (the real-account flow) swaps the "SYNTHETIC
     DEMO DATA" banner for a "YOUR DOCUMENTS" one in checklist.md and
-    audit_report.pdf — everything else about the folder is identical."""
+    audit_report.pdf — everything else about the folder is identical.
+
+    Anything that couldn't be reformatted is appended to `problems` and
+    written into checklist.md, rather than raised. The folder is the whole
+    deliverable; a single stubborn file must not take the values sheet,
+    the checklist and the report down with it.
+    """
+    problems = problems if problems is not None else []
     dest_dir = Path(output_root) / f"{result.student_id}_{result.scheme_id}"
     dest_dir.mkdir(parents=True, exist_ok=True)
 
-    _package_documents(result.extracted_documents, result.requirement.required_documents, dest_dir / "documents")
+    _package_documents(
+        result.extracted_documents, result.requirement.required_documents, dest_dir / "documents", problems
+    )
     # The HTML sheet is the one a person actually fills the form from
     # (copy buttons, full values, no truncated cells); the CSV stays for
     # anyone who wants the same data in a spreadsheet.
@@ -457,7 +550,10 @@ def package_audit(result: AuditResult, output_root: Path, synthetic: bool = True
         result.requirement, result.extracted_documents, dest_dir / "form_values.html", synthetic=synthetic
     )
     _write_values_csv(result.requirement, result.extracted_documents, dest_dir / "values.csv")
-    _write_checklist_md(result.requirement, result.extracted_documents, dest_dir / "checklist.md", synthetic=synthetic)
+    _write_checklist_md(
+        result.requirement, result.extracted_documents, dest_dir / "checklist.md",
+        synthetic=synthetic, problems=problems,
+    )
     _write_audit_report_pdf(result, dest_dir / "audit_report.pdf", synthetic=synthetic)
 
     return dest_dir
