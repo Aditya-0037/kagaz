@@ -34,6 +34,12 @@ The OCR text may have lost spaces between adjacent words on some lines
 label immediately before a value and your knowledge of Indian names to
 reconstruct the correct spacing.
 
+The document may be in Hindi or another Indic language while the form it
+is being submitted to is in English. Return every NAME and PLACE in Latin
+script, transliterated (प्रिया रमेश नायर -> "Priya Ramesh Nair"), using the
+standard spelling the person would themselves write in English. Keep
+numbers, dates and amounts exactly as printed.
+
 Extract only these, exactly as written on the document:
 - name: the person the document is about
 - father_name: the "Father's Name" / "Guardian's Name" field, if present

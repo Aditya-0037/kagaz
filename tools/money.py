@@ -16,14 +16,24 @@ from __future__ import annotations
 
 import re
 
+_THOUSAND = 1_000
 _LAKH = 100_000
 _CRORE = 10_000_000
 
 # "2,50,000" / "250000" / "2.5" — digits with optional separators/decimal.
 _NUMBER = r"\d[\d,\s]*(?:\.\d+)?"
 
-_LAKH_RE = re.compile(rf"({_NUMBER})\s*(lakh|lac|lakhs|lacs)\b", re.IGNORECASE)
-_CRORE_RE = re.compile(rf"({_NUMBER})\s*(crore|crores|cr)\b", re.IGNORECASE)
+# Scale words in Latin AND Devanagari. A Hindi income certificate says
+# "2.5 लाख", and matching only the Latin spelling read that as ₹2 — three
+# orders of magnitude low, which would silently pass an income check that
+# should have blocked the application.
+_CRORE_WORDS = r"(?:\bcrores?\b|\bcr\b|करोड़ों|करोड़|करोड)"
+_LAKH_WORDS = r"(?:\blakhs?\b|\blacs?\b|लाखों|लाख|लक्ष)"
+_THOUSAND_WORDS = r"(?:\bthousand\b|\bhazaars?\b|\bhazars?\b|हज़ार|हजार)"
+
+_CRORE_RE = re.compile(rf"({_NUMBER})\s*{_CRORE_WORDS}", re.IGNORECASE | re.UNICODE)
+_LAKH_RE = re.compile(rf"({_NUMBER})\s*{_LAKH_WORDS}", re.IGNORECASE | re.UNICODE)
+_THOUSAND_RE = re.compile(rf"({_NUMBER})\s*{_THOUSAND_WORDS}", re.IGNORECASE | re.UNICODE)
 _PLAIN_RE = re.compile(_NUMBER)
 
 
@@ -40,9 +50,10 @@ def parse_inr(text: str | None) -> int | None:
     parseable amount.
 
     Understands "Rs. 2,50,000", "₹250000/-", "2.5 lakh", "1 crore",
-    "INR 185000 per annum". Returns None rather than guessing when the
-    text has no number at all — a caller must be able to tell "no limit
-    stated" apart from "limit is zero".
+    "INR 185000 per annum", and the Devanagari equivalents ("2.5 लाख",
+    "रु. 1,85,000"). Returns None rather than guessing when the text has
+    no number at all — a caller must be able to tell "no limit stated"
+    apart from "limit is zero".
     """
     if not text:
         return None
@@ -59,6 +70,11 @@ def parse_inr(text: str | None) -> int | None:
     if lakh:
         value = _to_float(lakh.group(1))
         return int(round(value * _LAKH)) if value is not None else None
+
+    thousand = _THOUSAND_RE.search(text)
+    if thousand:
+        value = _to_float(thousand.group(1))
+        return int(round(value * _THOUSAND)) if value is not None else None
 
     plain = _PLAIN_RE.search(text)
     if plain:

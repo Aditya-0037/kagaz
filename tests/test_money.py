@@ -18,6 +18,14 @@ from tools.money import format_inr, parse_inr
         ("INR 185000", 185_000),
         ("₹1.85 Lakh", 185_000),
         ("8,00,000", 800_000),
+        # Devanagari: a Hindi income certificate says "2.5 लाख", and matching
+        # only the Latin spelling read that as ₹2 — three orders of magnitude
+        # low, which would silently pass an income check that should block.
+        ("2.5 लाख", 250_000),
+        ("रु. 1,85,000", 185_000),
+        ("1 करोड़", 10_000_000),
+        ("50 हजार", 50_000),
+        ("50 हज़ार", 50_000),
         ("no figure here", None),
         ("", None),
         (None, None),

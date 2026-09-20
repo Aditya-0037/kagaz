@@ -1,0 +1,30 @@
+{
+  "inputs": {
+    "doc_type": "bank_passbook",
+    "student": "priya_nair"
+  },
+  "model": "gemini-2.5-flash",
+  "prompt": "You are extracting fields from OCR text of an Indian bank passbook's KYC page.\n\nThe OCR text may have lost spaces between adjacent words on some lines\n(e.g. \"PriyaRameshNair\" instead of \"Priya Ramesh Nair\") \u2014 use the field\nlabel immediately before a value and your knowledge of Indian names to\nreconstruct the correct spacing.\n\nThe document may be in Hindi or another Indic language while the form it\nis being submitted to is in English. Return every NAME and PLACE in Latin\nscript, transliterated (\u092a\u094d\u0930\u093f\u092f\u093e \u0930\u092e\u0947\u0936 \u0928\u093e\u092f\u0930 -> \"Priya Ramesh Nair\"), using the\nstandard spelling the person would themselves write in English. Keep\nnumbers, dates and amounts exactly as printed. If a field is genuinely missing, garbled\nbeyond recognition, or absent from the text, leave it null. Never guess a\nvalue that isn't actually supported by the text.\n\nExtract: name, father_name (the \"Father's Name\" field), dob (as written),\naccount_no (as written, including any masking like X's), bank_name, and\nissue_date (as written). Bank passbooks don't have a validity/expiry date \u2014\nleave valid_until null regardless of what else is in the text.\n\nOCR TEXT:\nNationalised Bank of India (fictional)\nBANK PASSBOOK \u2014 KYC PAGE\nCertificate No: BAN-2026004-PRI\n\nName:\nPriya Ramesh Nair\nFather's Name:\nRamesh Nair\nDOB:\n12/03/2008\nAddress:\nKochi, Kerala\nAccount No:\nXXXXXXXX4821\nBank Name:\nState Bank of India\nDate of Issue:\n11/08/2022\n\nSYNTHETIC \u2014 NOT A REAL DOCUMENT\n\n",
+  "provider": "vertex",
+  "response": {
+    "output": {
+      "account_no": "XXXXXXXX4821",
+      "annual_income": null,
+      "bank_name": "State Bank of India",
+      "caste_category": null,
+      "certificate_no": null,
+      "dob": "12/03/2008",
+      "father_name": "Ramesh Nair",
+      "issue_date": "11/08/2022",
+      "marks_percent": null,
+      "name": "Priya Ramesh Nair",
+      "roll_no": null,
+      "valid_until": null
+    },
+    "usage": {
+      "inputTokens": 476,
+      "outputTokens": 288,
+      "totalTokens": 764
+    }
+  }
+}

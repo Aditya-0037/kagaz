@@ -14,7 +14,13 @@ _PROMPT_TEMPLATE = """You are extracting fields from OCR text of an Indian incom
 The OCR text may have lost spaces between adjacent words on some lines
 (e.g. "PriyaRameshNair" instead of "Priya Ramesh Nair") — use the field
 label immediately before a value and your knowledge of Indian names to
-reconstruct the correct spacing. If a field is genuinely missing, garbled
+reconstruct the correct spacing.
+
+The document may be in Hindi or another Indic language while the form it
+is being submitted to is in English. Return every NAME and PLACE in Latin
+script, transliterated (प्रिया रमेश नायर -> "Priya Ramesh Nair"), using the
+standard spelling the person would themselves write in English. Keep
+numbers, dates and amounts exactly as printed. If a field is genuinely missing, garbled
 beyond recognition, or absent from the text, leave it null. Never guess a
 value that isn't actually supported by the text.
 
