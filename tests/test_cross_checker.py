@@ -5,12 +5,19 @@ spec predicts, with zero LLM calls (nothing here imports an agent runtime
 or touches llm_cache).
 """
 
+from datetime import date
+
 from agents.cross_checker import audit_student
 from contracts import RequiredDoc
 from fixtures_loader import SCHEME_DEADLINE, student_documents
 
-TODAY = None  # let check_validity default to date.today(); severity is
-# stable regardless of when the suite runs (see test_dates.py)
+# Pinned, not date.today(). mohammed_irfan's income certificate expires
+# 2026-09-19, eleven days before SCHEME_DEADLINE — the scenario these
+# fixtures were built to encode. Left floating, the suite silently
+# changed meaning the morning that date passed: the finding became
+# "already expired" instead of "expires 11 days before the deadline",
+# and the assertion below broke with nothing in the code having changed.
+TODAY = date(2026, 9, 1)
 
 INCOME_CERT_REQUIREMENT = [
     RequiredDoc(doc_type="income_certificate", must_be_valid_on=SCHEME_DEADLINE)
@@ -19,13 +26,13 @@ INCOME_CERT_REQUIREMENT = [
 
 def test_priya_nair_clean_case_has_no_findings():
     documents = student_documents("priya_nair")
-    findings = audit_student(documents, INCOME_CERT_REQUIREMENT)
+    findings = audit_student(documents, INCOME_CERT_REQUIREMENT, today=TODAY)
     assert findings == []
 
 
 def test_aditya_sharma_name_variance_is_all_likely_fine():
     documents = student_documents("aditya_sharma")
-    findings = audit_student(documents, INCOME_CERT_REQUIREMENT)
+    findings = audit_student(documents, INCOME_CERT_REQUIREMENT, today=TODAY)
 
     assert len(findings) == 2
     assert all(f.category == "name_mismatch" for f in findings)
@@ -38,7 +45,7 @@ def test_aditya_sharma_name_variance_is_all_likely_fine():
 
 def test_mohammed_irfan_produces_exactly_two_blockers():
     documents = student_documents("mohammed_irfan")
-    findings = audit_student(documents, INCOME_CERT_REQUIREMENT)
+    findings = audit_student(documents, INCOME_CERT_REQUIREMENT, today=TODAY)
 
     assert len(findings) == 2
     assert all(f.severity == "blocker" for f in findings)

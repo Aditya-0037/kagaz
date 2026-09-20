@@ -19,10 +19,21 @@
   </div>
   {% if documents %}
   <table class="plain">
-    <tr><th>Type</th><th>Label</th><th>File</th><th>Expiry</th><th></th></tr>
+    <tr><th></th><th>Type</th><th>Label</th><th>File</th><th>Expiry</th><th></th></tr>
     {% for d in documents %}
     <tr>
-      <td><strong>{{ doc_type_labels.get(d.doc_type, d.doc_type) }}</strong></td>
+      <td style="width:58px">
+        <a href="/app/documents/{{ d.id }}/file" target="_blank" rel="noopener" title="Open {{ d.filename }}">
+          {% if (d.content_type or "").startswith("image/") %}
+          <img src="/app/documents/{{ d.id }}/file" alt=""
+               style="width:46px; height:46px; object-fit:cover; border-radius:6px; border:1px solid var(--line); display:block">
+          {% else %}
+          <span style="display:grid; place-items:center; width:46px; height:46px; border-radius:6px;
+                       border:1px solid var(--line); background:var(--bg); font-size:18px">📄</span>
+          {% endif %}
+        </a>
+      </td>
+      <td><strong>{{ doc_type_label(d.doc_type) }}</strong></td>
       <td class="muted">{{ d.label }}</td>
       <td class="tiny">{{ d.filename }}</td>
       <td>
@@ -34,10 +45,9 @@
         {% set note = renewal_note(d.expiry_date) %}
         {% if note %}<div class="tiny" style="margin-top:4px; color:var(--warn)">{{ note }}</div>{% endif %}
       </td>
-      <td style="text-align:right">
-        <form method="post" action="/app/documents/{{ d.id }}/delete" onsubmit="return confirm('Remove this document from your locker?');">
-          <button type="submit" class="btn btn-sm">Delete</button>
-        </form>
+      <td style="text-align:right; white-space:nowrap">
+        <a href="/app/documents/{{ d.id }}/file" target="_blank" rel="noopener" class="btn btn-sm">View</a>
+        <a href="/app/documents/{{ d.id }}/edit" class="btn btn-sm">Edit</a>
       </td>
     </tr>
     {% endfor %}
@@ -60,11 +70,20 @@
           {% for dt in doc_types %}
           <option value="{{ dt }}">{{ doc_type_labels.get(dt, dt) }}</option>
           {% endfor %}
+          <option value="__custom__">Other — type your own…</option>
         </select>
+        <div id="custom-type-wrap" style="display:none; margin-top:10px">
+          <input type="text" name="custom_type" id="custom_type"
+                 placeholder="e.g. 12th Marksheet, Aadhaar Card, Migration Certificate">
+          <p class="tiny" style="margin-top:6px">Kagaz stores and reformats any document, and still
+          cross-checks the name and date of birth on it against your others.</p>
+        </div>
       </div>
       <div>
         <label for="label">Label <span class="opt">(optional)</span></label>
         <input type="text" name="label" id="label" placeholder="e.g. 2026 income certificate">
+        <p class="tiny" style="margin-top:6px">Useful when you have more than one of the same kind —
+        "10th marksheet" vs "12th marksheet".</p>
       </div>
       <div>
         <label for="file">File <span class="opt">— JPG, PNG or PDF</span></label>
@@ -80,4 +99,20 @@
     </div>
   </form>
 </div>
+
+<script>
+  (function () {
+    var select = document.getElementById("doc_type");
+    var wrap = document.getElementById("custom-type-wrap");
+    var input = document.getElementById("custom_type");
+    function sync() {
+      var custom = select.value === "__custom__";
+      wrap.style.display = custom ? "" : "none";
+      input.required = custom;
+      if (custom) input.focus();
+    }
+    select.addEventListener("change", sync);
+    sync();
+  })();
+</script>
 {% endblock %}

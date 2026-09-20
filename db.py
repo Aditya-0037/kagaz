@@ -183,5 +183,13 @@ def list_documents_for_user(user_id: str) -> list[dict[str, Any]]:
     return result
 
 
+def update_document(document_id: str, **fields: Any) -> None:
+    """Change a locker document's metadata (label, doc_type, expiry).
+    The stored file itself is never rewritten — replacing a file means
+    uploading a new document."""
+    fields["updated_at"] = _now()
+    _client().collection("documents").document(document_id).set(fields, merge=True)
+
+
 def delete_document(document_id: str) -> None:
     _client().collection("documents").document(document_id).delete()

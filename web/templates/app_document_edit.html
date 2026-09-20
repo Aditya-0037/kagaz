@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Edit document — Kagaz{% endblock %}
+{% block notice %}
+<div class="notice notice-account">Your account — real documents, processed live, stored under your login</div>
+{% endblock %}
+{% block crumb %}<div class="crumb"><a href="/app">Dashboard</a> / <a href="/app/documents">My locker</a> / Edit</div>{% endblock %}
+{% block heading %}{{ document.label or doc_type_label(document.doc_type) }}{% endblock %}
+{% block lede %}<p class="lede">Change how this document is filed. The file itself stays as uploaded —
+  to replace it, add a new document and delete this one.</p>{% endblock %}
+
+{% block content %}
+
+{% if request.query_params.get("error") %}
+<div class="alert error">{{ request.query_params.get("error") }}</div>
+{% endif %}
+
+<div class="grid grid-2">
+  <div class="card">
+    <h2>Preview</h2>
+    {% set ct = document.content_type or "" %}
+    {% if ct.startswith("image/") %}
+      <a href="/app/documents/{{ document.id }}/file" target="_blank" rel="noopener">
+        <img src="/app/documents/{{ document.id }}/file" alt="{{ document.filename }}"
+             style="max-width:100%; border:1px solid var(--line); border-radius:8px">
+      </a>
+    {% elif ct == "application/pdf" %}
+      <embed src="/app/documents/{{ document.id }}/file" type="application/pdf"
+             style="width:100%; height:360px; border:1px solid var(--line); border-radius:8px">
+    {% else %}
+      <div class="empty-state"><span class="ico">📄</span>No inline preview for this file type.</div>
+    {% endif %}
+    <div class="btnrow" style="margin-top:14px">
+      <a href="/app/documents/{{ document.id }}/file" target="_blank" rel="noopener" class="btn btn-sm">Open full size</a>
+    </div>
+    <hr class="sep">
+    <p class="tiny" style="margin:0">
+      File: {{ document.filename }}<br>
+      Type: {{ ct or "unknown" }}<br>
+      Uploaded: {{ document.uploaded_at[:16].replace("T", " ") if document.uploaded_at else "—" }}
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>Details</h2>
+    <form method="post" action="/app/documents/{{ document.id }}/edit">
+      <label for="doc_type">Document type</label>
+      <select name="doc_type" id="doc_type" required>
+        {% for dt in doc_types %}
+        <option value="{{ dt }}" {{ "selected" if dt == document.doc_type else "" }}>{{ doc_type_labels.get(dt, dt) }}</option>
+        {% endfor %}
+        <option value="__custom__" {{ "selected" if document.doc_type not in doc_types else "" }}>Other — type your own…</option>
+      </select>
+      <div id="custom-type-wrap" style="display:none; margin-top:10px">
+        <input type="text" name="custom_type" id="custom_type"
+               placeholder="e.g. 12th Marksheet, Aadhaar Card"
+               value="{{ doc_type_label(document.doc_type) if document.doc_type not in doc_types else '' }}">
+      </div>
+
+      <label for="label">Label</label>
+      <input type="text" name="label" id="label" value="{{ document.label or '' }}"
+             placeholder="e.g. 12th marksheet, 2026 income certificate">
+
+      <label for="expiry_date">Expiry date <span class="opt">(certificates only)</span></label>
+      <input type="date" name="expiry_date" id="expiry_date" value="{{ document.expiry_date or '' }}">
+      {% set note = renewal_note(document.expiry_date) %}
+      {% if note %}
+      <p class="tiny" style="margin-top:6px; color:var(--warn)">{{ note }}</p>
+      {% endif %}
+
+      <div class="btnrow" style="margin-top:22px">
+        <button type="submit" class="btn-primary">Save changes</button>
+        <a href="/app/documents" class="btn">Cancel</a>
+      </div>
+    </form>
+
+    <hr class="sep">
+    <form method="post" action="/app/documents/{{ document.id }}/delete"
+          onsubmit="return confirm('Remove this document from your locker? This cannot be undone.');">
+      <button type="submit" class="btn btn-sm">Delete this document</button>
+    </form>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var select = document.getElementById("doc_type");
+    var wrap = document.getElementById("custom-type-wrap");
+    var input = document.getElementById("custom_type");
+    function sync() {
+      var custom = select.value === "__custom__";
+      wrap.style.display = custom ? "" : "none";
+      input.required = custom;
+    }
+    select.addEventListener("change", sync);
+    sync();
+  })();
+</script>
+{% endblock %}

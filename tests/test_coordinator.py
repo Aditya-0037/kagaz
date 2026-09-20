@@ -216,3 +216,65 @@ def test_real_runs_never_write_ocr_text_into_the_committed_fixtures_dir(tmp_path
     assert seen["cache_dir"] == coordinator.REAL_OCR_CACHE_DIR
     assert DEFAULT_CACHE_DIR not in (seen["cache_dir"], seen["cache_dir"].parent)
     assert "fixtures" not in str(seen["cache_dir"])
+
+
+def test_unknown_document_types_are_read_by_the_generic_verifier(tmp_path, monkeypatch):
+    # A user's folder holds more than the seven types with dedicated
+    # verifiers — a second marksheet, an Aadhaar card, a migration
+    # certificate. Those must still be read for name/DOB so they take
+    # part in the cross-check, not raise "no verifier registered".
+    import agents.coordinator as coordinator
+    from contracts import ExtractedDocument, Requirement, RequiredDoc
+
+    seen = {}
+
+    def fake_generic_verify(ocr_text, source_path, *, student_id, llm_mode=None, doc_type="", doc_label=""):
+        seen["doc_type"] = doc_type
+        seen["doc_label"] = doc_label
+        return ExtractedDocument(
+            doc_type=doc_type, source_path=source_path, fields={"name": "Aditya Sharma"}, extraction_confidence=1.0
+        ), {}
+
+    monkeypatch.setattr(coordinator, "extract_text", lambda *a, **k: "OCR")
+    monkeypatch.setattr(coordinator.generic, "verify", fake_generic_verify)
+
+    doc = tmp_path / "migration.jpg"
+    doc.write_bytes(b"x")
+    requirement = Requirement(
+        scheme_id="s",
+        scheme_name="S",
+        required_documents=[RequiredDoc(doc_type="migration_certificate")],
+        required_fields=[],
+        source="text",
+        confidence=1.0,
+    )
+
+    result = coordinator.run_audit_for_documents("u", "r", requirement, {"migration_certificate": doc})
+
+    assert seen["doc_type"] == "migration_certificate"
+    assert [d.doc_type for d in result.extracted_documents] == ["migration_certificate"]
+    assert not [f for f in result.findings if f.category == "format"]
+
+
+def test_unknown_types_get_the_deadline_applied_so_expiry_can_be_checked():
+    from datetime import date
+
+    from agents.coordinator import apply_deadline
+    from contracts import Requirement, RequiredDoc
+
+    requirement = Requirement(
+        scheme_id="s",
+        scheme_name="S",
+        deadline=date(2026, 12, 31),
+        required_documents=[
+            RequiredDoc(doc_type="migration_certificate"),
+            RequiredDoc(doc_type="marksheet"),  # canonical, doesn't expire
+        ],
+        required_fields=[],
+        source="text",
+        confidence=1.0,
+    )
+
+    updated = {rd.doc_type: rd.must_be_valid_on for rd in apply_deadline(requirement).required_documents}
+    assert updated["migration_certificate"] == date(2026, 12, 31)
+    assert updated["marksheet"] is None

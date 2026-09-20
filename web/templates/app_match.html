@@ -61,7 +61,7 @@
   {% set options = locker_by_type.get(rd.doc_type, []) %}
   <div class="card">
     <div class="card-row" style="margin-bottom:4px">
-      <h3 style="margin:0">{{ doc_type_labels.get(rd.doc_type, rd.doc_type) }}</h3>
+      <h3 style="margin:0">{{ doc_type_label(rd.doc_type) }}</h3>
       {% if options %}
         <span class="pill pill-ok">{{ options | length }} in your locker</span>
       {% else %}
@@ -79,6 +79,7 @@
     </p>
     {% endif %}
 
+    {% set others = locker_others.get(rd.doc_type, []) %}
     <label for="choice_{{ rd.doc_type }}">Use</label>
     <select name="choice_{{ rd.doc_type }}" id="choice_{{ rd.doc_type }}" class="choice-select" data-doc-type="{{ rd.doc_type }}">
       {% for opt in options %}
@@ -86,6 +87,13 @@
       {% endfor %}
       <option value="upload" {{ "selected" if not options else "" }}>Upload a new file…</option>
       <option value="none">Skip — I don't have this yet</option>
+      {% if others %}
+      <optgroup label="Something else from my locker">
+        {% for opt in others %}
+        <option value="{{ opt.id }}">{{ doc_type_label(opt.doc_type) }} — {{ opt.label }}</option>
+        {% endfor %}
+      </optgroup>
+      {% endif %}
     </select>
 
     <div class="upload-block" data-doc-type="{{ rd.doc_type }}" style="{{ 'display:none' if options else '' }}">

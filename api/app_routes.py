@@ -31,7 +31,7 @@ from api import real_run_state
 from api.templates import templates
 from auth import require_user
 from contracts import Requirement
-from tools.doc_types import CANONICAL_DOC_TYPES
+from tools.doc_types import CANONICAL_DOC_TYPES, normalize_doc_type
 from tools.packager import NON_DOCUMENT_REJECTION_CAUSES
 
 router = APIRouter()
@@ -48,6 +48,14 @@ DOC_TYPE_LABELS: dict[str, str] = {
 
 SCRATCH_DIR = Path(__file__).parent.parent / "outbox" / "real_scratch"
 EXPIRY_SOON_DAYS = 30
+
+
+def doc_type_label(doc_type: str) -> str:
+    """Display name for a doc_type, including custom ones a user typed:
+    "migration_certificate" -> "Migration Certificate"."""
+    if doc_type in DOC_TYPE_LABELS:
+        return DOC_TYPE_LABELS[doc_type]
+    return doc_type.replace("_", " ").title()
 
 # What the verification pipeline can actually read: images go through OCR
 # or the vision backend, PDFs through pdfplumber's text layer. Anything
@@ -150,6 +158,7 @@ def dashboard(request: Request, user_id: str = Depends(require_user)) -> HTMLRes
             "renewal_note": _renewal_note,
             "runs": runs[:8],
             "doc_type_labels": DOC_TYPE_LABELS,
+            "doc_type_label": doc_type_label,
         },
     )
 
@@ -169,6 +178,7 @@ def locker(request: Request, error: str | None = None, user_id: str = Depends(re
             "renewal_note": _renewal_note,
             "doc_types": sorted(CANONICAL_DOC_TYPES),
             "doc_type_labels": DOC_TYPE_LABELS,
+            "doc_type_label": doc_type_label,
             "error": error,
         },
     )
@@ -177,17 +187,112 @@ def locker(request: Request, error: str | None = None, user_id: str = Depends(re
 @router.post("/app/documents")
 def upload_document(
     doc_type: str = Form(...),
+    custom_type: str = Form(""),
     label: str = Form(""),
     expiry_date: str = Form(""),
     file: UploadFile = File(...),
     user_id: str = Depends(require_user),
 ) -> RedirectResponse:
-    if doc_type not in CANONICAL_DOC_TYPES:
+    # "__custom__" means the user typed their own document name. Real
+    # folders hold more than the seven types with dedicated verifiers —
+    # a 10th and a 12th marksheet, an Aadhaar card, a migration
+    # certificate — and those still need storing, reformatting, and
+    # cross-checking for name/DOB consistency.
+    if doc_type == "__custom__":
+        typed = custom_type.strip()
+        if not typed:
+            return RedirectResponse(
+                f"/app/documents?error={quote('Type a name for this document.')}", status_code=303
+            )
+        # normalize_doc_type maps a recognisable name onto its canonical
+        # type ("Income Certificate" typed by hand still gets the income
+        # verifier) and slugifies anything genuinely new.
+        doc_type = normalize_doc_type(typed)
+        label = label.strip() or typed
+    elif doc_type not in CANONICAL_DOC_TYPES:
         raise HTTPException(400, f"unknown doc_type {doc_type!r}")
+
     reason = _reject_reason(file)
     if reason:
         return RedirectResponse(f"/app/documents?error={quote(reason)}", status_code=303)
     _save_upload(user_id, doc_type, label, file, expiry_date)
+    return RedirectResponse("/app/documents", status_code=303)
+
+
+def _own_document_or_404(document_id: str, user_id: str) -> dict:
+    document = db.get_document(document_id)
+    if document is None or document.get("user_id") != user_id:
+        raise HTTPException(404, "document not found")
+    return document
+
+
+@router.get("/app/documents/{document_id}/file")
+def view_document(document_id: str, user_id: str = Depends(require_user)) -> StreamingResponse:
+    """Serve a user their own stored document. Streamed through the app
+    with an ownership check rather than handed out as a public signed
+    URL — these are people's income and identity documents."""
+    document = _own_document_or_404(document_id, user_id)
+    data, content_type = blob_storage.download_bytes(document["gcs_uri"])
+    filename = document.get("filename") or document_id
+    return StreamingResponse(
+        io.BytesIO(data),
+        media_type=content_type,
+        headers={
+            # inline: the browser shows the image/PDF instead of downloading it
+            "Content-Disposition": f'inline; filename="{filename}"',
+            "Cache-Control": "private, no-store",
+        },
+    )
+
+
+@router.get("/app/documents/{document_id}/edit", response_class=HTMLResponse)
+def edit_document_form(
+    request: Request, document_id: str, user_id: str = Depends(require_user)
+) -> HTMLResponse:
+    document = _own_document_or_404(document_id, user_id)
+    return templates.TemplateResponse(
+        request,
+        "app_document_edit.html",
+        {
+            "document": document,
+            "doc_types": sorted(CANONICAL_DOC_TYPES),
+            "doc_type_labels": DOC_TYPE_LABELS,
+            "doc_type_label": doc_type_label,
+            "expiry_status": _expiry_status,
+            "renewal_note": _renewal_note,
+        },
+    )
+
+
+@router.post("/app/documents/{document_id}/edit")
+def edit_document(
+    document_id: str,
+    doc_type: str = Form(...),
+    custom_type: str = Form(""),
+    label: str = Form(""),
+    expiry_date: str = Form(""),
+    user_id: str = Depends(require_user),
+) -> RedirectResponse:
+    _own_document_or_404(document_id, user_id)
+
+    if doc_type == "__custom__":
+        typed = custom_type.strip()
+        if not typed:
+            return RedirectResponse(
+                f"/app/documents/{document_id}/edit?error={quote('Type a name for this document.')}",
+                status_code=303,
+            )
+        doc_type = normalize_doc_type(typed)
+        label = label.strip() or typed
+    elif doc_type not in CANONICAL_DOC_TYPES:
+        raise HTTPException(400, f"unknown doc_type {doc_type!r}")
+
+    db.update_document(
+        document_id,
+        doc_type=doc_type,
+        label=label.strip() or doc_type_label(doc_type),
+        expiry_date=expiry_date or None,
+    )
     return RedirectResponse("/app/documents", status_code=303)
 
 
@@ -294,6 +399,16 @@ def match_documents(request: Request, run_id: str, user_id: str = Depends(requir
     for doc in documents:
         by_type.setdefault(doc["doc_type"], []).append(doc)
 
+    # A user's folder never lines up exactly with a form's wording — they
+    # may hold a "12th Marksheet" where the form says "Qualifying
+    # Examination Certificate". Offer every other locker document as a
+    # secondary choice rather than forcing a re-upload of a file they
+    # already gave us.
+    others_by_type = {
+        doc_type: [d for d in documents if d["doc_type"] != doc_type]
+        for doc_type in {rd.doc_type for rd in requirement.required_documents}
+    }
+
     return templates.TemplateResponse(
         request,
         "app_match.html",
@@ -302,7 +417,9 @@ def match_documents(request: Request, run_id: str, user_id: str = Depends(requir
             "run_id": run_id,
             "requirement": requirement,
             "locker_by_type": by_type,
+            "locker_others": others_by_type,
             "doc_type_labels": DOC_TYPE_LABELS,
+            "doc_type_label": doc_type_label,
         },
     )
 

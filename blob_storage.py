@@ -46,6 +46,18 @@ def upload_bytes(data: bytes, blob_path: str, content_type: str | None = None) -
     return f"gs://{_bucket_name()}/{blob_path}"
 
 
+def download_bytes(gs_uri: str) -> tuple[bytes, str]:
+    """Read a stored file straight into memory, returning (bytes,
+    content_type). Used to show a user their own uploaded document
+    without minting a public signed URL for it."""
+    if not gs_uri.startswith("gs://"):
+        raise ValueError(f"not a gs:// URI: {gs_uri!r}")
+    bucket_name, _, blob_path = gs_uri[len("gs://"):].partition("/")
+    blob = _client().bucket(bucket_name).blob(blob_path)
+    data = blob.download_as_bytes()
+    return data, blob.content_type or "application/octet-stream"
+
+
 def download_to_temp(gs_uri: str) -> Path:
     """Download a gs:// URI to a fresh temp file, return its local path."""
     if not gs_uri.startswith("gs://"):

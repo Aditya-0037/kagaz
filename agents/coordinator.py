@@ -36,9 +36,9 @@ from pathlib import Path
 from agents.cross_checker import audit_student, income_findings
 from agents.escalation import DecisionProvider, run_escalations
 from agents.requirement_extractor import extract_requirement_from_pdf
-from agents.verifiers import VERIFIERS
+from agents.verifiers import VERIFIERS, generic
 from contracts import AuditResult, ExtractedDocument, Finding, Requirement, RequiredDoc
-from tools.doc_types import EXPIRING_DOC_TYPES
+from tools.doc_types import CANONICAL_DOC_TYPES, EXPIRING_DOC_TYPES
 from tools.image_checks import IMAGE_CHECKS
 from tools.ocr import DEFAULT_CACHE_DIR as OCR_CACHE_DIR
 from tools.ocr import extract_text
@@ -66,9 +66,14 @@ def apply_deadline(requirement: Requirement) -> Requirement:
     if requirement.deadline is None:
         return requirement
 
+    # Known expiring types, plus anything Kagaz doesn't recognise: a
+    # custom document ("migration certificate", "disability certificate")
+    # may well carry a validity window, and cross_checker skips any
+    # document whose valid_until came back empty — so setting this for an
+    # unknown type can only add a real finding, never a false one.
     updated_docs = [
         rd.model_copy(update={"must_be_valid_on": requirement.deadline})
-        if rd.doc_type in EXPIRING_DOC_TYPES
+        if rd.doc_type in EXPIRING_DOC_TYPES or rd.doc_type not in CANONICAL_DOC_TYPES
         else rd
         for rd in requirement.required_documents
     ]
@@ -95,11 +100,23 @@ def _verify_one(
     if doc_type in IMAGE_CHECKS:
         return IMAGE_CHECKS[doc_type](doc_path, required), {}
 
+    ocr_text = extract_text(doc_path, llm_mode=llm_mode, cache_dir=ocr_cache_dir or OCR_CACHE_DIR)
+
     if doc_type in VERIFIERS:
-        ocr_text = extract_text(doc_path, llm_mode=llm_mode, cache_dir=ocr_cache_dir or OCR_CACHE_DIR)
         return VERIFIERS[doc_type](ocr_text, doc_path, student_id=subject_id, llm_mode=llm_mode)
 
-    raise ValueError(f"No verifier or image check registered for doc_type {doc_type!r}")
+    # A document type Kagaz has no dedicated agent for — a second
+    # marksheet, an Aadhaar card, a migration certificate. Read it for
+    # identity fields anyway so it still takes part in the name/DOB
+    # cross-check, which is where a mismatch would actually show up.
+    return generic.verify(
+        ocr_text,
+        doc_path,
+        student_id=subject_id,
+        llm_mode=llm_mode,
+        doc_type=doc_type,
+        doc_label=required.notes or doc_type.replace("_", " "),
+    )
 
 
 def _missing_document_findings(requirement: Requirement, documents: dict[str, Path]) -> list[Finding]:
