@@ -136,6 +136,10 @@
     .pill-brand { background: var(--brand-soft); color: var(--brand); }
 
     /* ---------- tables ---------- */
+    /* A table with six columns cannot fit a 390px phone. Scroll it inside
+       its own box rather than letting it push the whole page sideways,
+       and drop the least load-bearing columns at that width. */
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     table.plain { width: 100%; border-collapse: collapse; font-size: 14px; }
     table.plain th { text-align: left; color: var(--ink-4); font-weight: 600; font-size: 11.5px;
                       text-transform: uppercase; letter-spacing: .05em; padding: 8px 10px;
@@ -229,6 +233,25 @@
       .pagehead h1 { font-size: 22px; }
       nav.topnav .inner { height: auto; padding: 10px 16px; flex-wrap: wrap; }
       .brand .sub { display: none; }
+      .wrap { padding-left: 16px; padding-right: 16px; }
+      .card { padding: 16px; }
+      /* Secondary columns: the filename repeats what the label says, and
+         the raw timestamp is rarely what someone needs on a phone. */
+      .col-optional { display: none; }
+      table.plain th, table.plain td { padding: 9px 7px; }
+      /* A row of a document's details reads fine as a stacked card on a
+         phone, and keeps its actions visible — a side-scrolling table
+         hides exactly the buttons people came to press. */
+      table.stack-on-mobile, table.stack-on-mobile tbody,
+      table.stack-on-mobile tr, table.stack-on-mobile td { display: block; width: 100%; }
+      table.stack-on-mobile tr:first-child { display: none; }
+      table.stack-on-mobile tr { border: 1px solid var(--line); border-radius: 10px;
+                                  padding: 12px 14px; margin-bottom: 10px; background: var(--surface); }
+      table.stack-on-mobile td { border: none; padding: 3px 0; text-align: left !important; }
+      table.stack-on-mobile td[style*="width:58px"] { width: auto; }
+      table.stack-on-mobile .btn { margin-right: 6px; margin-top: 6px; }
+      .btnrow .btn, .btnrow button { flex: 1 1 auto; justify-content: center; }
+      .stats { gap: 18px; }
     }
   </style>
 </head>

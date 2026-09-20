@@ -183,7 +183,7 @@
   {% if state.result.decision_log %}
   <div class="card">
     <h2>Decision log</h2>
-    <table class="plain">
+    <div class="table-wrap"><table class="plain">
       <tr><th>When</th><th>Decision</th><th>Finding</th><th>Note</th></tr>
       {% for d in state.result.decision_log %}
       <tr>
@@ -193,7 +193,7 @@
         <td class="muted">{{ d.note or "—" }}</td>
       </tr>
       {% endfor %}
-    </table>
+    </table></div>
   </div>
   {% endif %}
 {% endif %}

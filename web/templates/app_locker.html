@@ -18,8 +18,9 @@
     <span class="pill pill-muted">{{ documents | length }} stored</span>
   </div>
   {% if documents %}
-  <table class="plain">
-    <tr><th></th><th>Type</th><th>Label</th><th>File</th><th>Expiry</th><th></th></tr>
+  <div class="table-wrap">
+  <table class="plain stack-on-mobile">
+    <tr><th></th><th>Type</th><th>Label</th><th class="col-optional">File</th><th>Expiry</th><th></th></tr>
     {% for d in documents %}
     <tr>
       <td style="width:58px">
@@ -35,7 +36,7 @@
       </td>
       <td><strong>{{ doc_type_label(d.doc_type) }}</strong></td>
       <td class="muted">{{ d.label }}</td>
-      <td class="tiny">{{ d.filename }}</td>
+      <td class="tiny col-optional">{{ d.filename }}</td>
       <td>
         {% set s = expiry_status(d.expiry_date) %}
         {% if s == "expired" %}<span class="pill pill-danger">Expired {{ d.expiry_date }}</span>
@@ -52,6 +53,7 @@
     </tr>
     {% endfor %}
   </table>
+  </div>
   {% else %}
   <div class="empty-state">
     <span class="ico">🗂️</span>

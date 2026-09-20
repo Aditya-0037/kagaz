@@ -175,3 +175,68 @@ def test_empty_pasted_text_yields_low_confidence_and_unresolved_not_exception():
     assert req.confidence == 0.0
     assert req.unresolved != []
     assert req.source == "text"
+
+
+def test_a_document_only_in_the_format_table_is_not_lost():
+    # Regression: the merge looped over the checklist call's output only,
+    # so a document the checklist call missed but the format-specs call
+    # found — "Photograph" and "Specimen Signature", both named in prose
+    # rather than in the list — vanished from the requirement entirely.
+    from agents.requirement_extractor import (
+        _ChecklistOutput,
+        _DeadlineOutput,
+        _FieldsOutput,
+        _FormatSpecEntry,
+        _FormatSpecsOutput,
+        _merge,
+    )
+
+    req = _merge(
+        "s",
+        "S",
+        "text",
+        _ChecklistOutput(documents=["Income Certificate"]),  # checklist missed the photo
+        _FieldsOutput(fields=["Full Name"]),
+        _FormatSpecsOutput(
+            specs=[
+                _FormatSpecEntry(doc_type_label="Photograph", file_formats=["jpg"],
+                                 max_size_kb=50, width_px=276, height_px=354),
+            ]
+        ),
+        _DeadlineOutput(deadline_iso=None),
+    )
+
+    types = {rd.doc_type for rd in req.required_documents}
+    assert types == {"income_certificate", "photo"}
+
+    photo = next(rd for rd in req.required_documents if rd.doc_type == "photo")
+    assert photo.max_size_kb == 50
+    assert photo.dimensions_px == (276, 354)
+    # and it says why it was added, rather than appearing silently
+    assert any("format/size table" in u for u in req.unresolved)
+
+
+def test_a_vague_spec_alone_does_not_invent_a_required_document():
+    # Only a spec with real numbers implies the document is required; a
+    # vague mention must not add a document the checklist never saw.
+    from agents.requirement_extractor import (
+        _ChecklistOutput,
+        _DeadlineOutput,
+        _FieldsOutput,
+        _FormatSpecEntry,
+        _FormatSpecsOutput,
+        _merge,
+    )
+
+    req = _merge(
+        "s",
+        "S",
+        "text",
+        _ChecklistOutput(documents=["Income Certificate"]),
+        _FieldsOutput(fields=[]),
+        _FormatSpecsOutput(
+            specs=[_FormatSpecEntry(doc_type_label="Some Annexure", unresolved_note="in the prescribed format")]
+        ),
+        _DeadlineOutput(deadline_iso=None),
+    )
+    assert {rd.doc_type for rd in req.required_documents} == {"income_certificate"}

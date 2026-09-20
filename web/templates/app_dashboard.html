@@ -34,7 +34,7 @@
   <h2>Renew these</h2>
   <p class="muted" style="margin-top:0">A lapsed certificate is one of the most common reasons an
   otherwise-correct application is rejected. These take weeks to reissue — start now.</p>
-  <table class="plain">
+  <div class="table-wrap"><table class="plain stack-on-mobile">
     <tr><th>Document</th><th>Status</th><th>What to do</th></tr>
     {% for d in expiring %}
     <tr>
@@ -50,7 +50,7 @@
       <td class="muted">{{ renewal_note(d.expiry_date) }}</td>
     </tr>
     {% endfor %}
-  </table>
+  </table></div>
 </div>
 {% endif %}
 
@@ -60,8 +60,8 @@
     {% if runs %}<a href="/app/new" class="btn btn-sm">New</a>{% endif %}
   </div>
   {% if runs %}
-  <table class="plain">
-    <tr><th>Scheme</th><th>Status</th><th>Started</th><th></th></tr>
+  <div class="table-wrap"><table class="plain stack-on-mobile">
+    <tr><th>Scheme</th><th>Status</th><th class="col-optional">Started</th><th></th></tr>
     {% for run in runs %}
     <tr>
       <td><strong>{{ run.scheme_source }}</strong></td>
@@ -72,7 +72,7 @@
         {% elif run.status in ("running", "awaiting_decision") %}<span class="pill pill-warn">In progress</span>
         {% else %}<span class="pill pill-muted">Draft</span>{% endif %}
       </td>
-      <td class="muted">{{ run.created_at[:16].replace("T", " ") if run.created_at else "" }}</td>
+      <td class="muted col-optional">{{ run.created_at[:16].replace("T", " ") if run.created_at else "" }}</td>
       <td style="text-align:right">
         {% if run.status == "draft" %}
           <a href="/app/runs/{{ run.id }}/match" class="btn btn-sm">Continue</a>
@@ -82,7 +82,7 @@
       </td>
     </tr>
     {% endfor %}
-  </table>
+  </table></div>
   {% else %}
   <div class="empty-state">
     <span class="ico">📄</span>

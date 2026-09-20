@@ -289,6 +289,38 @@ def _merge(
             )
         )
 
+    # Reconcile the two calls. The checklist call reads prose; the
+    # format-specs call reads the size/format table. A document named only
+    # in prose is easy for the checklist call to miss — "Photograph" and
+    # "Specimen Signature" were both dropped that way — while the table
+    # lists them with exact numbers. A doc_type the specs call gave
+    # concrete numbers for is required, whatever the checklist said, so
+    # take the union rather than silently losing it.
+    for doc_type, spec in specs_by_type.items():
+        if doc_type in seen:
+            continue
+        has_numbers = bool(spec.file_formats) or spec.max_size_kb is not None or (
+            spec.width_px and spec.height_px
+        )
+        if not has_numbers:
+            continue
+        seen.add(doc_type)
+        doc_types.append(doc_type)
+        required_documents.append(
+            RequiredDoc(
+                doc_type=doc_type,
+                file_formats=[f.lower().lstrip(".") for f in spec.file_formats],
+                max_size_kb=spec.max_size_kb,
+                dimensions_px=(spec.width_px, spec.height_px) if spec.width_px and spec.height_px else None,
+                must_be_valid_on=None,
+                notes=None,
+            )
+        )
+        unresolved.append(
+            f"{doc_type} appears in this form's format/size table but not in its document list — "
+            "included because the table states real requirements for it. Confirm it's needed."
+        )
+
     deadline: date | None = None
     if deadline_out.deadline_iso:
         deadline = _parse_iso_date(deadline_out.deadline_iso)
