@@ -159,6 +159,26 @@
     .error { background: var(--danger-soft); border-color: #fecaca; color: #991b1b; }
     .success { background: var(--ok-soft); border-color: #a7f3d0; color: var(--ok); }
 
+    /* ---------- universal drop box ---------- */
+    .dropzone { border: 2px dashed var(--line-2); border-radius: 12px; background: var(--bg);
+                padding: 30px 22px; text-align: center; cursor: pointer; transition: border-color .12s, background .12s; }
+    .dropzone:hover { border-color: var(--brand-2); background: var(--brand-soft); }
+    .dropzone.dragging { border-color: var(--brand-2); background: var(--brand-soft);
+                         box-shadow: 0 0 0 4px rgba(79,70,229,.12); }
+    .dropzone .dz-ico { width: 46px; height: 46px; border-radius: 12px; background: var(--surface);
+                        border: 1px solid var(--line); display: grid; place-items: center;
+                        margin: 0 auto 12px; color: var(--brand); }
+    .dropzone .dz-main { font-size: 15.5px; font-weight: 600; margin-bottom: 4px; }
+    .dropzone .dz-sub { font-size: 13px; color: var(--ink-3); }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+    .chip { display: inline-flex; align-items: center; gap: 8px; background: var(--surface);
+            border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font-size: 13px; }
+    .chip img { width: 28px; height: 28px; object-fit: cover; border-radius: 4px; display: block; }
+    .chip .x { border: none; background: none; cursor: pointer; color: var(--ink-4); font-size: 16px;
+               line-height: 1; padding: 0 2px; }
+    .chip .x:hover { color: var(--danger); background: none; }
+    .chip .idx { color: var(--ink-4); font-variant-numeric: tabular-nums; }
+
     /* ---------- method picker (new application) ---------- */
     .methods { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 4px; }
     .method { border: 1.5px solid var(--line); border-radius: 11px; padding: 16px; background: var(--surface);

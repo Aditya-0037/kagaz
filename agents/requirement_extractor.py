@@ -107,7 +107,26 @@ class _EligibilityOutput(BaseModel):
 # --------------------------------------------------------------------------
 
 
-def _checklist_prompt(text: str) -> str:
+def _note_block(note: str | None) -> str:
+    """The applicant's own instruction, if they gave one.
+
+    Placed before the source text and clearly labelled as guidance from
+    the person, not as part of the notification — so it can steer what to
+    look for ("this is for the SC category", "I only care about the photo
+    rules") without being mistaken for a scheme rule.
+    """
+    note = (note or "").strip()
+    if not note:
+        return ""
+    return (
+        "\n\nTHE APPLICANT ASKED YOU TO PAY ATTENTION TO THIS (their words, "
+        "not part of the notification — use it to decide what matters, never "
+        "as a source of facts):\n"
+        f"{note}\n\n"
+    )
+
+
+def _checklist_prompt(text: str, note: str | None = None) -> str:
     return (
         "You are extracting a document checklist from an Indian government scheme "
         "notification. Read the ENTIRE text below and list every distinct supporting "
@@ -115,22 +134,22 @@ def _checklist_prompt(text: str) -> str:
         "— do NOT include application-form fields like 'Name' or 'Date of Birth'). "
         "Use short labels matching how the text names them (e.g. 'Income Certificate', "
         "'Marksheet'). Include a document even if it sounds optional or conditional.\n\n"
-        f"SCHEME NOTIFICATION TEXT:\n{text}"
+        f"{_note_block(note)}SCHEME NOTIFICATION TEXT:\n{text}"
     )
 
 
-def _fields_prompt(text: str) -> str:
+def _fields_prompt(text: str, note: str | None = None) -> str:
     return (
         "You are extracting application-form field labels from an Indian government "
         "scheme notification. Read the ENTIRE text below and list every particular the "
         "online application form asks the applicant to fill in (e.g. 'Full Name', "
         "'Date of Birth', 'Bank Account Number'). Word each label exactly as the text "
         "words it. Do NOT include document names.\n\n"
-        f"SCHEME NOTIFICATION TEXT:\n{text}"
+        f"{_note_block(note)}SCHEME NOTIFICATION TEXT:\n{text}"
     )
 
 
-def _format_specs_prompt(text: str) -> str:
+def _format_specs_prompt(text: str, note: str | None = None) -> str:
     return (
         "You are extracting file-format specifications for uploaded documents from an "
         "Indian government scheme notification. Format specifications are sometimes "
@@ -143,22 +162,22 @@ def _format_specs_prompt(text: str) -> str:
         "file_formats empty and max_size_kb/width_px/height_px null, and instead put a "
         "short quote or paraphrase of what the text actually says into "
         "unresolved_note.\n\n"
-        f"SCHEME NOTIFICATION TEXT:\n{text}"
+        f"{_note_block(note)}SCHEME NOTIFICATION TEXT:\n{text}"
     )
 
 
-def _deadline_prompt(text: str) -> str:
+def _deadline_prompt(text: str, note: str | None = None) -> str:
     return (
         "You are extracting the application deadline from an Indian government scheme "
         "notification. Read the ENTIRE text below and find the last date for "
         "submission of applications. Return it as deadline_iso in YYYY-MM-DD format. "
         "If no fixed deadline is stated anywhere in the text, return null for "
         "deadline_iso — do not guess or invent a date.\n\n"
-        f"SCHEME NOTIFICATION TEXT:\n{text}"
+        f"{_note_block(note)}SCHEME NOTIFICATION TEXT:\n{text}"
     )
 
 
-def _eligibility_prompt(text: str) -> str:
+def _eligibility_prompt(text: str, note: str | None = None) -> str:
     return (
         "You are extracting WHO IS ELIGIBLE from the application form or notification "
         "below — not what documents are needed. It may be any kind of form: a "
@@ -174,7 +193,7 @@ def _eligibility_prompt(text: str) -> str:
         "caste/category, state of domicile, minimum marks, age limits, employment "
         "status, land holding, residence). Do not include document requirements or file "
         "format rules here. Empty list if the text states none.\n\n"
-        f"FORM / NOTIFICATION TEXT:\n{text}"
+        f"{_note_block(note)}FORM / NOTIFICATION TEXT:\n{text}"
     )
 
 
@@ -327,7 +346,8 @@ _extract_pdf_text = extract_pdf_text
 
 
 def _extract_requirement_from_text(
-    text: str, scheme_id: str, scheme_name: str, source: str, llm_mode: str | None = None
+    text: str, scheme_id: str, scheme_name: str, source: str, llm_mode: str | None = None,
+    note: str | None = None,
 ) -> Requirement:
     text = text.strip()
     if len(text) < MIN_TEXT_LENGTH:
@@ -343,19 +363,19 @@ def _extract_requirement_from_text(
         )
 
     checklist = _run_structured(
-        _checklist_prompt(text), _ChecklistOutput, scheme_id=scheme_id, call_name="checklist", llm_mode=llm_mode
+        _checklist_prompt(text, note), _ChecklistOutput, scheme_id=scheme_id, call_name="checklist", llm_mode=llm_mode
     )
     fields_out = _run_structured(
-        _fields_prompt(text), _FieldsOutput, scheme_id=scheme_id, call_name="fields", llm_mode=llm_mode
+        _fields_prompt(text, note), _FieldsOutput, scheme_id=scheme_id, call_name="fields", llm_mode=llm_mode
     )
     format_specs_out = _run_structured(
-        _format_specs_prompt(text), _FormatSpecsOutput, scheme_id=scheme_id, call_name="format_specs", llm_mode=llm_mode
+        _format_specs_prompt(text, note), _FormatSpecsOutput, scheme_id=scheme_id, call_name="format_specs", llm_mode=llm_mode
     )
     deadline_out = _run_structured(
-        _deadline_prompt(text), _DeadlineOutput, scheme_id=scheme_id, call_name="deadline", llm_mode=llm_mode
+        _deadline_prompt(text, note), _DeadlineOutput, scheme_id=scheme_id, call_name="deadline", llm_mode=llm_mode
     )
     eligibility_out = _run_structured(
-        _eligibility_prompt(text), _EligibilityOutput, scheme_id=scheme_id, call_name="eligibility", llm_mode=llm_mode
+        _eligibility_prompt(text, note), _EligibilityOutput, scheme_id=scheme_id, call_name="eligibility", llm_mode=llm_mode
     )
 
     return _merge(
@@ -371,7 +391,8 @@ def extract_requirement_from_pdf(
 
 
 def extract_requirement_from_text(
-    text: str, scheme_id: str, scheme_name: str, source: str = "text", llm_mode: str | None = None
+    text: str, scheme_id: str, scheme_name: str, source: str = "text", llm_mode: str | None = None,
+    note: str | None = None,
 ) -> Requirement:
     """Public entry point for the real-account flow's non-PDF scheme-input
     tiers (agents/scheme_input.py) — pasted text, a URL's fetched text/HTML,
@@ -379,7 +400,7 @@ def extract_requirement_from_text(
     actually came from. llm_mode is forced to "live" by the real-account
     flow regardless of the server-wide KAGAZ_LLM_MODE, so real scheme text
     is never written into the committed replay cache."""
-    return _extract_requirement_from_text(text, scheme_id, scheme_name, source=source, llm_mode=llm_mode)
+    return _extract_requirement_from_text(text, scheme_id, scheme_name, source=source, llm_mode=llm_mode, note=note)
 
 
 def build_manual_requirement(

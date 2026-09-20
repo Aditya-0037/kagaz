@@ -4,150 +4,167 @@
 <div class="notice notice-account">Your account — real documents, processed live, stored under your login</div>
 {% endblock %}
 {% block crumb %}<div class="crumb"><a href="/app">Dashboard</a> / New application</div>{% endblock %}
-{% block heading %}Start a new application{% endblock %}
-{% block lede %}<p class="lede">Tell Kagaz about the scheme however is easiest. It reads the requirements
-  live and builds the document checklist for you.</p>{% endblock %}
+{% block heading %}What form are you filling?{% endblock %}
+{% block lede %}<p class="lede">Give Kagaz whatever you have, in whatever form you have it — screenshots,
+  a photo of a notice board, the PDF, a link, or text you copied. Mix them freely. Nothing needs
+  converting first.</p>{% endblock %}
 
 {% block content %}
 
 {% if error %}<div class="alert error">{{ error }}</div>{% endif %}
 
 <form method="post" action="/app/new" enctype="multipart/form-data" id="new-app-form">
-  <input type="hidden" name="tier" id="tier" value="url">
 
   <div class="card">
-    <h2>1. How do you want to give Kagaz the scheme?</h2>
-    <div class="methods" id="methods">
-
-      <div class="method active" data-method="url" tabindex="0" role="button">
-        <div class="ico">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-          </svg>
-        </div>
-        <div class="t">Paste a link</div>
-        <div class="d">The scheme's webpage or PDF URL</div>
+    <div class="dropzone" id="dropzone" tabindex="0" role="button"
+         aria-label="Add screenshots, photos or PDFs of the form">
+      <div class="dz-ico">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 16V4"/><path d="m7 9 5-5 5 5"/>
+          <path d="M20 16v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2"/>
+        </svg>
       </div>
-
-      <div class="method" data-method="screenshot" tabindex="0" role="button">
-        <div class="ico">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-            <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="1.5"/>
-            <path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/>
-          </svg>
-        </div>
-        <div class="t">Upload a screenshot</div>
-        <div class="d">A photo or screenshot of the notice</div>
-      </div>
-
-      <div class="method" data-method="pdf" tabindex="0" role="button">
-        <div class="ico">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v5h6"/>
-            <path d="M16 13H8M16 17H8"/>
-          </svg>
-        </div>
-        <div class="t">Upload the PDF</div>
-        <div class="d">The official notification file</div>
-      </div>
-
-      <div class="method" data-method="paste" tabindex="0" role="button">
-        <div class="ico">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
-            <rect x="8" y="2" width="8" height="4" rx="1"/><path d="M12 11h4M12 15h4M8 11h.01M8 15h.01"/>
-          </svg>
-        </div>
-        <div class="t">Paste the text</div>
-        <div class="d">Copy the rules from anywhere</div>
-      </div>
-
+      <div class="dz-main">Drop the form here, or click to choose files</div>
+      <div class="dz-sub">Screenshots, phone photos, PDFs — as many as you like.
+      You can also just paste (Ctrl&nbsp;+&nbsp;V) an image straight in.</div>
     </div>
+    <input type="file" name="files" id="files" multiple
+           accept="image/*,application/pdf,.txt,.md,.csv" style="display:none">
+    <div class="chips" id="chips"></div>
+
+    <label for="text" style="margin-top:20px">…or paste the text or a link
+      <span class="opt">(you can do both)</span></label>
+    <textarea name="text" id="text" style="min-height:120px"
+      placeholder="Paste the eligibility rules and document list here, or just drop in a link like https://… — Kagaz will read the page itself."></textarea>
+    <p class="tiny" style="margin-top:6px">Links to JavaScript-heavy portals often return nothing
+    readable. If that happens Kagaz will say so, and a screenshot will work instead.</p>
   </div>
 
   <div class="card">
-    <h2>2. The scheme</h2>
-
-    <div class="panel active" data-panel="url">
-      <label for="url">Scheme notification URL</label>
-      <input type="url" name="url" id="url" placeholder="https://scholarships.gov.in/...">
-      <p class="tiny" style="margin-top:7px">Kagaz fetches this one page directly — no login, no crawling,
-      no submitting. Works best on a direct PDF link or a plain notification page.</p>
-      <p class="tiny" style="margin-top:7px; color:var(--warn)">Many portals build their pages with
-      JavaScript, which a direct fetch can't run — Kagaz will tell you if it got nothing readable.
-      A screenshot is the more reliable option for those.</p>
-    </div>
-
-    <div class="panel" data-panel="screenshot">
-      <label for="screenshot_file">Screenshots or photos of the notification
-        <span class="opt">— select as many as you need</span></label>
-      <input type="file" name="screenshot_file" id="screenshot_file" accept="image/*" multiple>
-      <p class="tiny" style="margin-top:7px">PNG or JPEG, and a clear phone photo of a printed notice
-      works too. A notification rarely fits on one screen — select every screenshot at once (Ctrl/Cmd
-      -click, or drag a selection) and Kagaz reads them in order as one document.</p>
-      <div id="screenshot-list" class="tiny" style="margin-top:8px"></div>
-    </div>
-
-    <div class="panel" data-panel="pdf">
-      <label for="pdf_file">Scheme notification PDF
-        <span class="opt">— more than one is fine</span></label>
-      <input type="file" name="pdf_file" id="pdf_file" accept="application/pdf" multiple>
-      <p class="tiny" style="margin-top:7px">If the annexure with the format rules is a separate file,
-      add it here too.</p>
-      <div id="pdf-list" class="tiny" style="margin-top:8px"></div>
-    </div>
-
-    <div class="panel" data-panel="paste">
-      <label for="text">Paste the scheme's text</label>
-      <textarea name="text" id="text" placeholder="Paste the eligibility rules, the list of required documents, format requirements, and the deadline..."></textarea>
-    </div>
+    <label for="note">Anything Kagaz should pay attention to?
+      <span class="opt">(optional)</span></label>
+    <input type="text" name="note" id="note"
+           placeholder="e.g. I'm applying under the SC category — check those rules, and the photo size limit">
+    <p class="tiny" style="margin-top:6px">Steers what it looks for. It's treated as your instruction,
+    never as a fact about the form.</p>
 
     <label for="scheme_name">Name this application <span class="opt">(optional)</span></label>
-    <input type="text" name="scheme_name" id="scheme_name" placeholder="e.g. State Post-Matric Scholarship 2026-27">
+    <input type="text" name="scheme_name" id="scheme_name"
+           placeholder="e.g. State Post-Matric Scholarship 2026-27">
   </div>
 
   <div class="btnrow">
-    <button type="submit" class="btn btn-primary btn-lg">Extract requirements</button>
+    <button type="submit" class="btn-primary btn-lg" id="submit-btn">Read the form</button>
     <a href="/app" class="btn btn-lg">Cancel</a>
   </div>
-  <p class="tiny" style="margin-top:12px">This runs a live model call on the scheme text — it is never
-  cached, and your documents are not read at this step.</p>
+  <p class="tiny" style="margin-top:12px">Kagaz reads this live and builds the document checklist.
+  Your own documents aren't touched at this step.</p>
 </form>
 
 <script>
   (function () {
-    var methods = document.querySelectorAll("#methods .method");
-    var panels = document.querySelectorAll(".panel");
-    var tierInput = document.getElementById("tier");
-    function select(name) {
-      methods.forEach(function (m) { m.classList.toggle("active", m.getAttribute("data-method") === name); });
-      panels.forEach(function (p) { p.classList.toggle("active", p.getAttribute("data-panel") === name); });
-      tierInput.value = name;
+    var dz = document.getElementById("dropzone");
+    var input = document.getElementById("files");
+    var chips = document.getElementById("chips");
+    var textarea = document.getElementById("text");
+    var form = document.getElementById("new-app-form");
+    var btn = document.getElementById("submit-btn");
+
+    // The canonical list lives here; input.files is rebuilt from it so the
+    // user can remove one file without re-picking the rest.
+    var picked = [];
+
+    function syncInput() {
+      var dt = new DataTransfer();
+      picked.forEach(function (f) { dt.items.add(f); });
+      input.files = dt.files;
+      render();
     }
-    methods.forEach(function (m) {
-      var name = m.getAttribute("data-method");
-      m.addEventListener("click", function () { select(name); });
-      m.addEventListener("keydown", function (e) {
-        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(name); }
+
+    function render() {
+      chips.innerHTML = "";
+      picked.forEach(function (file, i) {
+        var chip = document.createElement("div");
+        chip.className = "chip";
+
+        if (file.type && file.type.indexOf("image/") === 0) {
+          var img = document.createElement("img");
+          img.src = URL.createObjectURL(file);
+          img.onload = function () { URL.revokeObjectURL(img.src); };
+          chip.appendChild(img);
+        } else {
+          var ico = document.createElement("span");
+          ico.textContent = "📄";
+          chip.appendChild(ico);
+        }
+
+        var idx = document.createElement("span");
+        idx.className = "idx";
+        idx.textContent = (i + 1) + ".";
+        chip.appendChild(idx);
+
+        var name = document.createElement("span");
+        name.textContent = file.name || "pasted image";
+        chip.appendChild(name);
+
+        var x = document.createElement("button");
+        x.type = "button";
+        x.className = "x";
+        x.setAttribute("aria-label", "Remove " + (file.name || "file"));
+        x.textContent = "×";
+        x.addEventListener("click", function (e) {
+          e.stopPropagation();
+          picked.splice(i, 1);
+          syncInput();
+        });
+        chip.appendChild(x);
+
+        chips.appendChild(chip);
       });
+    }
+
+    function add(files) {
+      Array.prototype.slice.call(files || []).forEach(function (f) { picked.push(f); });
+      syncInput();
+    }
+
+    dz.addEventListener("click", function () { input.click(); });
+    dz.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); input.click(); }
+    });
+    input.addEventListener("change", function () {
+      // Files chosen through the picker replace nothing — append them.
+      add(input.files);
     });
 
-    // Confirm back what was picked, and in what order they'll be read.
-    function wireList(inputId, listId, noun) {
-      var input = document.getElementById(inputId);
-      var list = document.getElementById(listId);
-      if (!input || !list) return;
-      input.addEventListener("change", function () {
-        var files = Array.prototype.slice.call(input.files || []);
-        if (!files.length) { list.textContent = ""; return; }
-        list.innerHTML = "<strong>" + files.length + " " + noun +
-          (files.length > 1 ? "s" : "") + " selected, read in this order:</strong><br>" +
-          files.map(function (f, i) { return (i + 1) + ". " + f.name; }).join("<br>");
-      });
-    }
-    wireList("screenshot_file", "screenshot-list", "screenshot");
-    wireList("pdf_file", "pdf-list", "file");
+    ["dragenter", "dragover"].forEach(function (evt) {
+      dz.addEventListener(evt, function (e) { e.preventDefault(); dz.classList.add("dragging"); });
+    });
+    ["dragleave", "drop"].forEach(function (evt) {
+      dz.addEventListener(evt, function (e) { e.preventDefault(); dz.classList.remove("dragging"); });
+    });
+    dz.addEventListener("drop", function (e) {
+      if (e.dataTransfer && e.dataTransfer.files) add(e.dataTransfer.files);
+    });
+
+    // Paste an image anywhere on the page (screenshot straight from the
+    // clipboard); pasting text into the textarea behaves normally.
+    document.addEventListener("paste", function (e) {
+      if (!e.clipboardData) return;
+      var files = Array.prototype.slice.call(e.clipboardData.files || []);
+      if (files.length) { e.preventDefault(); add(files); }
+    });
+
+    form.addEventListener("submit", function (e) {
+      if (!picked.length && !textarea.value.trim()) {
+        e.preventDefault();
+        alert("Add the form first — drop in a screenshot or PDF, or paste the text or a link.");
+        return;
+      }
+      btn.disabled = true;
+      btn.textContent = "Reading the form…";
+    });
   })();
 </script>
 {% endblock %}

@@ -13,6 +13,7 @@ followed, and both the request and the response body are capped.
 from __future__ import annotations
 
 import ipaddress
+import re
 import socket
 import urllib.error
 import urllib.request
@@ -105,6 +106,113 @@ def from_pdf_uploads(pdf_paths: Sequence[Path | str]) -> str:
         if text:
             parts.append(f"--- document {index} of {len(pdf_paths)} ---\n{text}")
     return "\n\n".join(parts)
+
+
+# --------------------------------------------------------------------------
+# One box that takes anything
+# --------------------------------------------------------------------------
+
+_URL_RE = re.compile(r"https?://[^\s<>\"')]+", re.IGNORECASE)
+
+_IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff", ".gif", ".heic"}
+_TEXT_SUFFIXES = {".txt", ".md", ".csv", ".rtf"}
+
+
+@dataclass
+class CollectedInput:
+    text: str
+    sources: list[str]  # human-readable, for showing the user what was read
+    source_kind: str  # the Requirement.source value to record
+    problems: list[str]  # non-fatal: a link that failed while files worked
+
+
+def _read_one_file(path: Path, *, cache_dir: Path, llm_mode: str) -> tuple[str, str]:
+    """(text, kind) from a single file, routed by what it actually is
+    rather than by which upload box the user happened to pick."""
+    suffix = path.suffix.lower()
+    if suffix == ".pdf":
+        return extract_pdf_text(path), "pdf"
+    if suffix in _TEXT_SUFFIXES:
+        return path.read_text(encoding="utf-8", errors="replace"), "text"
+    if suffix in _IMAGE_SUFFIXES:
+        return ocr_extract_text(path, cache_dir=cache_dir, llm_mode=llm_mode), "screenshot"
+    # Unknown extension: try reading it as an image, since a phone photo
+    # saved without an extension is far more likely than a binary blob.
+    return ocr_extract_text(path, cache_dir=cache_dir, llm_mode=llm_mode), "screenshot"
+
+
+def collect_scheme_input(
+    file_paths: Sequence[Path] | None = None,
+    pasted: str = "",
+    *,
+    cache_dir: Path,
+    llm_mode: str = "live",
+) -> CollectedInput:
+    """Take everything the user gave us — any mix of images, PDFs, text
+    files, pasted text and pasted links — and return one block of text.
+
+    The point is that the user should never have to classify their own
+    input. Asking someone to convert a screenshot to PDF, or to know
+    which tab their material belongs in, adds exactly the kind of
+    busywork this tool exists to remove: if they have to reformat
+    something to use Kagaz, they may as well have filled the form by hand.
+
+    A link that fails does not fail the whole submission — it is reported
+    alongside whatever else was read successfully.
+    """
+    parts: list[str] = []
+    sources: list[str] = []
+    problems: list[str] = []
+    kinds: list[str] = []
+
+    for path in file_paths or []:
+        try:
+            text, kind = _read_one_file(Path(path), cache_dir=cache_dir, llm_mode=llm_mode)
+        except Exception as exc:  # noqa: BLE001 - one unreadable file shouldn't sink the rest
+            problems.append(f"Couldn't read {Path(path).name}: {exc}")
+            continue
+        text = text.strip()
+        if text:
+            parts.append(f"--- from {Path(path).name} ---\n{text}")
+            sources.append(Path(path).name)
+            kinds.append(kind)
+        else:
+            problems.append(f"{Path(path).name} had no readable text in it.")
+
+    pasted = (pasted or "").strip()
+    if pasted:
+        urls = _URL_RE.findall(pasted)
+        for url in urls:
+            try:
+                fetched = fetch_url_text(url)
+            except (UnsafeURLError, ThinPageError) as exc:
+                problems.append(f"{url} — {exc}")
+                continue
+            except Exception as exc:  # noqa: BLE001
+                problems.append(f"{url} — could not be read: {exc}")
+                continue
+            parts.append(f"--- from {url} ---\n{fetched.text}")
+            sources.append(url)
+            kinds.append("url")
+
+        # Whatever the user typed besides the links is content too.
+        remainder = _URL_RE.sub(" ", pasted).strip()
+        if len(remainder) > 40:
+            parts.append(f"--- pasted text ---\n{remainder}")
+            sources.append("pasted text")
+            kinds.append("text")
+
+    # One source kind is recorded on the Requirement; with a mix, name the
+    # dominant one rather than inventing a new contract value.
+    source_kind = "text"
+    for candidate in ("pdf", "screenshot", "url", "text"):
+        if candidate in kinds:
+            source_kind = candidate
+            break
+
+    return CollectedInput(
+        text="\n\n".join(parts).strip(), sources=sources, source_kind=source_kind, problems=problems
+    )
 
 
 def _assert_safe_url(url: str) -> str:

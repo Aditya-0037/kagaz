@@ -25,13 +25,7 @@ from fastapi.templating import Jinja2Templates
 
 import blob_storage
 import db
-from agents.scheme_input import (
-    UnsafeURLError,
-    fetch_url_text,
-    from_pasted_text,
-    from_pdf_uploads,
-    from_screenshots,
-)
+from agents.scheme_input import collect_scheme_input
 from agents.requirement_extractor import extract_requirement_from_text
 from api import real_run_state
 from api.templates import templates
@@ -321,61 +315,64 @@ def new_application(request: Request, user_id: str = Depends(require_user)) -> H
 @router.post("/app/new", response_model=None)
 def create_application(
     request: Request,
-    tier: str = Form(...),
     scheme_name: str = Form(""),
     text: str = Form(""),
-    url: str = Form(""),
-    pdf_file: list[UploadFile] | None = File(None),
-    screenshot_file: list[UploadFile] | None = File(None),
+    note: str = Form(""),
+    files: list[UploadFile] | None = File(None),
     user_id: str = Depends(require_user),
 ) -> HTMLResponse | RedirectResponse:
+    """One box, anything in it.
+
+    Previously this asked the user to pick a tier — paste / URL / PDF /
+    screenshot — and accepted only that one kind. That put the burden of
+    classifying and converting their own material on them, which is the
+    exact busywork this tool exists to remove: if someone has to convert a
+    screenshot to PDF to use Kagaz, they may as well have filled the form
+    by hand. Now any mix of files, pasted text and pasted links is read
+    together.
+    """
     run_id = uuid.uuid4().hex[:12]
     SCRATCH_DIR.mkdir(parents=True, exist_ok=True)
     written: list[Path] = []
 
-    def _stage(uploads: list[UploadFile] | None, kind: str, default_suffix: str) -> list[Path]:
-        """Write each uploaded file to scratch, in the order given."""
-        chosen = [u for u in (uploads or []) if getattr(u, "filename", None)]
-        if not chosen:
-            raise ValueError(f"Choose at least one {kind} to upload.")
-        paths: list[Path] = []
-        for index, upload in enumerate(chosen):
-            suffix = Path(upload.filename).suffix or default_suffix
-            path = SCRATCH_DIR / f"{run_id}_{index}{suffix}"
-            path.write_bytes(upload.file.read())
-            paths.append(path)
-            written.append(path)
-        return paths
+    chosen = [u for u in (files or []) if getattr(u, "filename", None)]
+    if not chosen and not text.strip():
+        return templates.TemplateResponse(
+            request,
+            "app_new.html",
+            {"error": "Add the form first — drop in a screenshot, a photo or a PDF, or paste the text or a link."},
+            status_code=400,
+        )
 
     try:
-        if tier == "paste":
-            scheme_text, source = from_pasted_text(text), "text"
-        elif tier == "url":
-            fetched = fetch_url_text(url.strip())
-            scheme_text, source = fetched.text, fetched.source
-        elif tier == "pdf":
-            scheme_text = from_pdf_uploads(_stage(pdf_file, "PDF", ".pdf"))
-            source = "pdf"
-        elif tier == "screenshot":
-            # Several screenshots of one notification are the norm — the
-            # document list, the format rules and the deadline rarely fit
-            # on one screen.
-            scheme_text = from_screenshots(
-                _stage(screenshot_file, "screenshot", ".jpg"),
-                cache_dir=SCRATCH_DIR / "ocr_cache",
-                llm_mode="live",
-            )
-            source = "screenshot"
-        else:
-            raise ValueError(f"unknown input tier {tier!r}")
-    except (UnsafeURLError, ValueError) as exc:
+        for index, upload in enumerate(chosen):
+            suffix = Path(upload.filename).suffix or ".jpg"
+            path = SCRATCH_DIR / f"{run_id}_{index}{suffix}"
+            path.write_bytes(upload.file.read())
+            written.append(path)
+
+        collected = collect_scheme_input(
+            written, text, cache_dir=SCRATCH_DIR / "ocr_cache", llm_mode="live"
+        )
+    except Exception as exc:  # noqa: BLE001 - surfaced to the user, never swallowed
         return templates.TemplateResponse(request, "app_new.html", {"error": str(exc)}, status_code=400)
     finally:
         for path in written:
             path.unlink(missing_ok=True)
 
+    if not collected.text.strip():
+        detail = " ".join(collected.problems) if collected.problems else ""
+        return templates.TemplateResponse(
+            request,
+            "app_new.html",
+            {"error": ("Nothing readable came out of that. " + detail).strip()},
+            status_code=400,
+        )
+
     display_name = scheme_name.strip() or "My application"
-    requirement = extract_requirement_from_text(scheme_text, run_id, display_name, source=source, llm_mode="live")
+    requirement = extract_requirement_from_text(
+        collected.text, run_id, display_name, source=collected.source_kind, llm_mode="live", note=note
+    )
 
     if not requirement.required_documents and requirement.unresolved:
         return templates.TemplateResponse(
@@ -394,7 +391,8 @@ def create_application(
         user_id=user_id,
         status="draft",
         scheme_source=display_name,
-        input_tier=tier,
+        input_sources=collected.sources,
+        user_note=note.strip() or None,
         requirement=requirement.model_dump(mode="json"),
         created_at=datetime.now(timezone.utc).isoformat(),
     )
