@@ -29,6 +29,7 @@ decision_provider before the run finishes.
 
 from __future__ import annotations
 
+import os
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -52,10 +53,27 @@ STUDENTS_DIR = Path(__file__).parent.parent / "fixtures" / "students"
 # is wiped per run by api/real_run_state.py.
 REAL_OCR_CACHE_DIR = Path(__file__).parent.parent / "outbox" / "real_scratch" / "ocr_cache"
 
-# Documents are verified in parallel, but not unboundedly: each one is a
-# model call, and a whole checklist firing at once exhausts the Vertex
-# per-minute quota (observed as 429 RESOURCE_EXHAUSTED in production).
-MAX_PARALLEL_VERIFICATIONS = 3
+# A positive value caps concurrent document verifications. Set
+# KAGAZ_MAX_PARALLEL_VERIFICATIONS=0 to run every document in an audit at
+# once. The deployed default is deliberately five, while the Cloud Run
+# service opts into zero because Gemini 2.5 Flash uses Dynamic Shared Quota
+# rather than a fixed per-minute project quota.
+DEFAULT_MAX_PARALLEL_VERIFICATIONS = 5
+
+
+def _verification_workers(document_count: int) -> int:
+    """Return the configured parallelism, bounded by available work.
+
+    A zero environment value means "no application-side cap"; malformed
+    values fall back to the conservative default instead of breaking an
+    applicant's audit.
+    """
+    configured = os.getenv("KAGAZ_MAX_PARALLEL_VERIFICATIONS")
+    try:
+        requested = DEFAULT_MAX_PARALLEL_VERIFICATIONS if configured is None else int(configured)
+    except ValueError:
+        requested = DEFAULT_MAX_PARALLEL_VERIFICATIONS
+    return max(1, document_count if requested <= 0 else min(requested, document_count))
 
 
 def apply_deadline(requirement: Requirement) -> Requirement:
@@ -160,10 +178,7 @@ def run_audit_for_documents(
 
     unreadable: list[Finding] = []
     to_verify = [required for required in requirement.required_documents if required.doc_type in documents]
-    # Capped rather than one thread per document: seven documents firing
-    # seven Gemini calls at once trips the project's per-minute quota,
-    # and the parallelism buys little once the calls queue anyway.
-    with ThreadPoolExecutor(max_workers=max(1, min(MAX_PARALLEL_VERIFICATIONS, len(to_verify)))) as executor:
+    with ThreadPoolExecutor(max_workers=_verification_workers(len(to_verify))) as executor:
         futures = {
             executor.submit(
                 _verify_one, documents[required.doc_type], required, subject_id, llm_mode, ocr_cache_dir
