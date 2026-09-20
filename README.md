@@ -76,8 +76,8 @@ source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install --upgrade pip
 pip install -r requirements.txt
 
-pytest                            # 248 tests, replay mode, zero network/credentials
-                                   # (+6 more that need real GCP credentials — see below)
+pytest                            # 255 passing tests, replay mode, zero network/credentials
+                                   # (+6 skipped without real GCP credentials — see below)
 
 uvicorn api.main:app --reload
 ```
@@ -199,6 +199,25 @@ calls are independently checkable, not blended into one. Full writeup in
 `pytest` passes with zero network access and no credentials configured —
 verify it yourself with `KAGAZ_OLLAMA_HOST=http://127.0.0.1:1 pytest`.
 
+### Throughput and parallelism
+
+The live service uses `gemini-2.5-flash` on Vertex AI's **Dynamic Shared
+Quota**. This is not a fixed per-project credit or requests-per-minute cap:
+available capacity changes with shared demand, so an occasional `429
+RESOURCE_EXHAUSTED` is retried with exponential backoff. Kagaz's own
+verification fan-out is configurable with
+`KAGAZ_MAX_PARALLEL_VERIFICATIONS`:
+
+- a positive integer limits simultaneous document verifications;
+- `0` removes Kagaz's per-audit cap and verifies every provided document in
+  parallel.
+
+The deployed service sets it to `0`. This improves a multi-document audit's
+latency when shared capacity is available; retries still protect the user
+when Vertex is busy. See the [Vertex AI throughput
+documentation](https://cloud.google.com/vertex-ai/generative-ai/docs/resources/throughput-quota)
+for Dynamic Shared Quota details.
+
 ### Toolchain note
 
 This project uses a plain `venv` + `pip install -r requirements.txt`, not
@@ -233,7 +252,8 @@ gcloud run deploy kagaz --source . \
   --set-env-vars "KAGAZ_MODEL_PROVIDER=vertex,KAGAZ_LLM_MODE=replay,\
 KAGAZ_OCR_BACKEND=vision,KAGAZ_ENV=production,\
 GOOGLE_CLOUD_PROJECT=<your-project>,GOOGLE_CLOUD_LOCATION=us-central1,\
-KAGAZ_GCS_BUCKET=<your-bucket>,KAGAZ_SESSION_SECRET=<random-secret>"
+KAGAZ_GCS_BUCKET=<your-bucket>,KAGAZ_SESSION_SECRET=<random-secret>,\
+KAGAZ_MAX_PARALLEL_VERIFICATIONS=0"
 ```
 
 The runtime service account needs `roles/aiplatform.user`,
@@ -250,6 +270,11 @@ audit thread keeps running between the status page's polls.
 synthetic demo serve from committed fixtures (instant and free), while
 the real-account flow forces `live` in code regardless, so real documents
 are never served from — or written to — the replay cache.
+
+`KAGAZ_MAX_PARALLEL_VERIFICATIONS=0` removes only Kagaz's internal
+per-audit thread cap; it does not bypass Vertex AI capacity controls. Use a
+positive value (for example, `3`) if smoothing model traffic is more
+important than lowest latency.
 
 `render.yaml` remains for a one-click Render Blueprint deploy of the demo
 flow only; Render has no access to this project's Vertex/Firestore
