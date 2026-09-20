@@ -16,6 +16,7 @@ import ipaddress
 import socket
 import urllib.error
 import urllib.request
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlparse
@@ -30,8 +31,28 @@ _MAX_RESPONSE_BYTES = 10 * 1024 * 1024  # 10 MB — a scheme notice is text/PDF,
 _USER_AGENT = "Kagaz/1.0 (+single-page fetch for a user-pasted scheme URL; no crawling)"
 
 
+# Below this many characters of real text, a fetched page is treated as
+# having no content worth extracting from (a JS-rendered shell) rather
+# than as a scheme notification.
+MIN_USABLE_TEXT = 400
+
+
 class UnsafeURLError(ValueError):
     """Raised by fetch_url_text when a URL fails the SSRF guard."""
+
+
+class ThinPageError(ValueError):
+    """Raised when a fetch succeeded but the page carried no usable text —
+    almost always a JavaScript-rendered portal."""
+
+
+def _clean_html_text(text: str) -> str:
+    """Collapse the runs of blank lines HTML-to-text extraction leaves
+    behind. Cosmetic for a human, but it also stops nav/whitespace noise
+    from dominating the model's view of the page."""
+    lines = [line.strip() for line in text.splitlines()]
+    kept = [line for line in lines if line]
+    return "\n".join(kept).strip()
 
 
 @dataclass
@@ -56,6 +77,34 @@ def from_screenshot(image_path: Path | str, *, cache_dir: Path, llm_mode: str = 
     images — pointed at a real-user scratch cache_dir, never
     fixtures/ocr_cache/, and forced live so nothing real is cached."""
     return ocr_extract_text(image_path, cache_dir=cache_dir, llm_mode=llm_mode)
+
+
+def from_screenshots(image_paths: Sequence[Path | str], *, cache_dir: Path, llm_mode: str = "live") -> str:
+    """Several screenshots of one notification, in the order given.
+
+    A notification almost never fits on one screen — eligibility is at the
+    top, the document list in the middle, the deadline at the bottom — so
+    reading only the first image would routinely miss half the
+    requirements. Each is read separately and concatenated, because the
+    extractor works on one block of text.
+    """
+    parts: list[str] = []
+    for index, path in enumerate(image_paths, start=1):
+        text = ocr_extract_text(path, cache_dir=cache_dir, llm_mode=llm_mode).strip()
+        if text:
+            parts.append(f"--- page {index} of {len(image_paths)} ---\n{text}")
+    return "\n\n".join(parts)
+
+
+def from_pdf_uploads(pdf_paths: Sequence[Path | str]) -> str:
+    """Several PDFs making up one notification (an annexure filed
+    separately from the main notice, most often)."""
+    parts: list[str] = []
+    for index, path in enumerate(pdf_paths, start=1):
+        text = extract_pdf_text(path).strip()
+        if text:
+            parts.append(f"--- document {index} of {len(pdf_paths)} ---\n{text}")
+    return "\n\n".join(parts)
 
 
 def _assert_safe_url(url: str) -> str:
@@ -120,8 +169,20 @@ def fetch_url_text(url: str) -> FetchedScheme:
             tmp_path.unlink(missing_ok=True)
 
     html = body.decode("utf-8", errors="replace")
-    text = BeautifulSoup(html, "html.parser").get_text(separator="\n")
-    return FetchedScheme(text=text.strip(), source="url")
+    text = _clean_html_text(BeautifulSoup(html, "html.parser").get_text(separator="\n"))
+
+    if len(text) < MIN_USABLE_TEXT:
+        # Most scheme portals are JavaScript-rendered: the HTML served to a
+        # plain GET is an empty shell, so this "succeeds" with a page title
+        # and nothing else. Extracting a checklist from that produces
+        # confident nonsense — say what happened and what to do instead.
+        raise ThinPageError(
+            "That page returned almost no readable text — it builds its content with "
+            "JavaScript, which a direct fetch can't run. Take a screenshot of the "
+            "notification and upload that instead, or copy the text and paste it."
+        )
+
+    return FetchedScheme(text=text, source="url")
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):

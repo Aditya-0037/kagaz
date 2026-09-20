@@ -25,7 +25,13 @@ from fastapi.templating import Jinja2Templates
 
 import blob_storage
 import db
-from agents.scheme_input import UnsafeURLError, fetch_url_text, from_pasted_text, from_pdf_upload, from_screenshot
+from agents.scheme_input import (
+    UnsafeURLError,
+    fetch_url_text,
+    from_pasted_text,
+    from_pdf_uploads,
+    from_screenshots,
+)
 from agents.requirement_extractor import extract_requirement_from_text
 from api import real_run_state
 from api.templates import templates
@@ -319,12 +325,27 @@ def create_application(
     scheme_name: str = Form(""),
     text: str = Form(""),
     url: str = Form(""),
-    pdf_file: UploadFile | None = File(None),
-    screenshot_file: UploadFile | None = File(None),
+    pdf_file: list[UploadFile] | None = File(None),
+    screenshot_file: list[UploadFile] | None = File(None),
     user_id: str = Depends(require_user),
 ) -> HTMLResponse | RedirectResponse:
     run_id = uuid.uuid4().hex[:12]
     SCRATCH_DIR.mkdir(parents=True, exist_ok=True)
+    written: list[Path] = []
+
+    def _stage(uploads: list[UploadFile] | None, kind: str, default_suffix: str) -> list[Path]:
+        """Write each uploaded file to scratch, in the order given."""
+        chosen = [u for u in (uploads or []) if getattr(u, "filename", None)]
+        if not chosen:
+            raise ValueError(f"Choose at least one {kind} to upload.")
+        paths: list[Path] = []
+        for index, upload in enumerate(chosen):
+            suffix = Path(upload.filename).suffix or default_suffix
+            path = SCRATCH_DIR / f"{run_id}_{index}{suffix}"
+            path.write_bytes(upload.file.read())
+            paths.append(path)
+            written.append(path)
+        return paths
 
     try:
         if tier == "paste":
@@ -333,30 +354,25 @@ def create_application(
             fetched = fetch_url_text(url.strip())
             scheme_text, source = fetched.text, fetched.source
         elif tier == "pdf":
-            if pdf_file is None or not pdf_file.filename:
-                raise ValueError("choose a PDF file to upload")
-            tmp_path = SCRATCH_DIR / f"{run_id}.pdf"
-            tmp_path.write_bytes(pdf_file.file.read())
-            try:
-                scheme_text = from_pdf_upload(tmp_path)
-            finally:
-                tmp_path.unlink(missing_ok=True)
+            scheme_text = from_pdf_uploads(_stage(pdf_file, "PDF", ".pdf"))
             source = "pdf"
         elif tier == "screenshot":
-            if screenshot_file is None or not screenshot_file.filename:
-                raise ValueError("choose a screenshot image to upload")
-            suffix = Path(screenshot_file.filename).suffix or ".jpg"
-            tmp_path = SCRATCH_DIR / f"{run_id}{suffix}"
-            tmp_path.write_bytes(screenshot_file.file.read())
-            try:
-                scheme_text = from_screenshot(tmp_path, cache_dir=SCRATCH_DIR / "ocr_cache", llm_mode="live")
-            finally:
-                tmp_path.unlink(missing_ok=True)
+            # Several screenshots of one notification are the norm — the
+            # document list, the format rules and the deadline rarely fit
+            # on one screen.
+            scheme_text = from_screenshots(
+                _stage(screenshot_file, "screenshot", ".jpg"),
+                cache_dir=SCRATCH_DIR / "ocr_cache",
+                llm_mode="live",
+            )
             source = "screenshot"
         else:
             raise ValueError(f"unknown input tier {tier!r}")
     except (UnsafeURLError, ValueError) as exc:
         return templates.TemplateResponse(request, "app_new.html", {"error": str(exc)}, status_code=400)
+    finally:
+        for path in written:
+            path.unlink(missing_ok=True)
 
     display_name = scheme_name.strip() or "My application"
     requirement = extract_requirement_from_text(scheme_text, run_id, display_name, source=source, llm_mode="live")

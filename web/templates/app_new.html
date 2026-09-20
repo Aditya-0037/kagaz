@@ -73,18 +73,29 @@
       <label for="url">Scheme notification URL</label>
       <input type="url" name="url" id="url" placeholder="https://scholarships.gov.in/...">
       <p class="tiny" style="margin-top:7px">Kagaz fetches this one page directly — no login, no crawling,
-      no submitting. Works for a PDF link or a regular web page.</p>
+      no submitting. Works best on a direct PDF link or a plain notification page.</p>
+      <p class="tiny" style="margin-top:7px; color:var(--warn)">Many portals build their pages with
+      JavaScript, which a direct fetch can't run — Kagaz will tell you if it got nothing readable.
+      A screenshot is the more reliable option for those.</p>
     </div>
 
     <div class="panel" data-panel="screenshot">
-      <label for="screenshot_file">Screenshot or photo of the notification</label>
-      <input type="file" name="screenshot_file" id="screenshot_file" accept="image/*">
-      <p class="tiny" style="margin-top:7px">PNG or JPEG. A clear phone photo of a printed notice works too.</p>
+      <label for="screenshot_file">Screenshots or photos of the notification
+        <span class="opt">— select as many as you need</span></label>
+      <input type="file" name="screenshot_file" id="screenshot_file" accept="image/*" multiple>
+      <p class="tiny" style="margin-top:7px">PNG or JPEG, and a clear phone photo of a printed notice
+      works too. A notification rarely fits on one screen — select every screenshot at once (Ctrl/Cmd
+      -click, or drag a selection) and Kagaz reads them in order as one document.</p>
+      <div id="screenshot-list" class="tiny" style="margin-top:8px"></div>
     </div>
 
     <div class="panel" data-panel="pdf">
-      <label for="pdf_file">Scheme notification PDF</label>
-      <input type="file" name="pdf_file" id="pdf_file" accept="application/pdf">
+      <label for="pdf_file">Scheme notification PDF
+        <span class="opt">— more than one is fine</span></label>
+      <input type="file" name="pdf_file" id="pdf_file" accept="application/pdf" multiple>
+      <p class="tiny" style="margin-top:7px">If the annexure with the format rules is a separate file,
+      add it here too.</p>
+      <div id="pdf-list" class="tiny" style="margin-top:8px"></div>
     </div>
 
     <div class="panel" data-panel="paste">
@@ -121,6 +132,22 @@
         if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(name); }
       });
     });
+
+    // Confirm back what was picked, and in what order they'll be read.
+    function wireList(inputId, listId, noun) {
+      var input = document.getElementById(inputId);
+      var list = document.getElementById(listId);
+      if (!input || !list) return;
+      input.addEventListener("change", function () {
+        var files = Array.prototype.slice.call(input.files || []);
+        if (!files.length) { list.textContent = ""; return; }
+        list.innerHTML = "<strong>" + files.length + " " + noun +
+          (files.length > 1 ? "s" : "") + " selected, read in this order:</strong><br>" +
+          files.map(function (f, i) { return (i + 1) + ". " + f.name; }).join("<br>");
+      });
+    }
+    wireList("screenshot_file", "screenshot-list", "screenshot");
+    wireList("pdf_file", "pdf-list", "file");
   })();
 </script>
 {% endblock %}
